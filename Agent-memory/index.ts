@@ -1,8 +1,12 @@
 import { MCPServer, text, error, widget, markdown } from "mcp-use/server";
 import { z } from "zod";
 import path from "path";
+import { fileURLToPath } from "url";
 import { initializeDatabase } from "./src/db/schema.js";
 import { seedDatabase } from "./src/db/seed.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import {
   upsertMemory,
   searchMemories,
@@ -25,7 +29,7 @@ import type { SearchResultRow } from "./src/db/queries.js";
 import { agentDisplayName, relativeTime, truncate, getAgentId } from "./src/tools/helpers.js";
 
 // --- Database initialization ---
-const dbPath = path.join(process.cwd(), "data", "agent-memory.db");
+const dbPath = path.resolve(__dirname, "data", "agent-memory.db");
 const db = initializeDatabase(dbPath);
 seedDatabase(db);
 
@@ -656,8 +660,8 @@ server.resourceTemplate(
     name: "Memory by Key",
     mimeType: "application/json",
   },
-  async (uri, { key }) => {
-    const memory = getMemoryByKey(db, key as string);
+  async ({ key }: { key: string }) => {
+    const memory = getMemoryByKey(db, key);
     if (!memory) {
       return text(`No memory found with key '${key}'`);
     }

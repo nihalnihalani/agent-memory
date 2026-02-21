@@ -80,7 +80,7 @@ function validateType(type: string | undefined): void {
 }
 
 function sanitizeFtsQuery(query: string): string {
-  return query.replace(/[*"(){}[\]:^~!@#$%&]/g, ' ').trim();
+  return query.replace(/[*"'(){}[\]:^~!@#$%&]/g, ' ').trim();
 }
 
 export function upsertMemory(db: Database.Database, params: UpsertMemoryParams): MemoryRow {
