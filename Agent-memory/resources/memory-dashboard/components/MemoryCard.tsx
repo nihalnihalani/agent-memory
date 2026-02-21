@@ -1,96 +1,12 @@
 import React, { useState } from "react";
 import type { Memory } from "../types";
-
-const TYPE_COLORS: Record<string, string> = {
-  decision: "#3B82F6",
-  preference: "#8B5CF6",
-  task: "#F59E0B",
-  snippet: "#10B981",
-  note: "#6B7280",
-};
-
-const AGENT_COLORS: Record<string, string> = {
-  "claude-code": "#f97316",
-  "claude-ai": "#f97316",
-  claude: "#f97316",
-  "claude-desktop": "#f97316",
-  chatgpt: "#22c55e",
-  openai: "#22c55e",
-  "cursor-vscode": "#3b82f6",
-  cursor: "#3b82f6",
-  gemini: "#a855f7",
-  "gemini-cli-mcp-client": "#a855f7",
-  cline: "#06B6D4",
-  "roo-code": "#06B6D4",
-  copilot: "#6B7280",
-  "github-copilot": "#6B7280",
-  goose: "#F97316",
-  jetbrains: "#EF4444",
-};
-
-const DEFAULT_AGENT_COLOR = "#374151";
-
-function getAgentColor(agentId: string | null): string {
-  if (!agentId) return DEFAULT_AGENT_COLOR;
-  const id = agentId.toLowerCase();
-  for (const key of Object.keys(AGENT_COLORS)) {
-    if (id.includes(key)) return AGENT_COLORS[key];
-  }
-  return DEFAULT_AGENT_COLOR;
-}
-
-function getAgentName(agentId: string | null): string {
-  if (!agentId) return "Unknown";
-  const names: Record<string, string> = {
-    "claude-code": "Claude Code",
-    "claude-ai": "Claude",
-    claude: "Claude",
-    "claude-desktop": "Claude",
-    chatgpt: "ChatGPT",
-    openai: "ChatGPT",
-    "cursor-vscode": "Cursor",
-    cursor: "Cursor",
-    gemini: "Gemini",
-    "gemini-cli-mcp-client": "Gemini CLI",
-    cline: "Cline",
-    "roo-code": "Roo Code",
-    copilot: "Copilot",
-    "github-copilot": "Copilot",
-    goose: "Goose",
-    jetbrains: "JetBrains",
-  };
-  const id = agentId.toLowerCase();
-  for (const key of Object.keys(names)) {
-    if (id.includes(key)) return names[key];
-  }
-  return agentId;
-}
-
-function timeAgo(dateStr: string): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr + (dateStr.endsWith("Z") ? "" : "Z"));
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-  if (diff < 604800) return Math.floor(diff / 86400) + "d ago";
-  return d.toLocaleDateString();
-}
-
-function getFreshnessColor(memory: Memory): string {
-  const d = new Date(
-    (memory.updated_at || memory.created_at) +
-      ((memory.updated_at || memory.created_at).endsWith("Z") ? "" : "Z"),
-  );
-  const hoursAgo = (Date.now() - d.getTime()) / (1000 * 60 * 60);
-  const recencyScore = Math.max(0, 1 - hoursAgo / 168); // 7 days
-  const accessScore = Math.min(1, memory.access_count / 10);
-  const freshness = recencyScore * 0.6 + accessScore * 0.4;
-  if (freshness > 0.6) return "#22c55e";
-  if (freshness > 0.3) return "#eab308";
-  return "#6b7280";
-}
+import {
+  TYPE_COLORS,
+  getAgentColor,
+  getAgentName,
+  timeAgo,
+  getFreshnessColor,
+} from "../utils";
 
 interface MemoryCardProps {
   memory: Memory;

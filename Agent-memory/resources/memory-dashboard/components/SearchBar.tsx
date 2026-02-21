@@ -19,12 +19,6 @@ export default function SearchBar({
     onSearch(query);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      onSearch(query);
-    }
-  };
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -38,7 +32,6 @@ export default function SearchBar({
         placeholder="Search memories..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         style={{

@@ -1,25 +1,6 @@
 import React from "react";
 import type { Memory } from "../types";
-
-const AGENT_COLORS: Record<string, string> = {
-  "claude-code": "#f97316",
-  "claude-ai": "#f97316",
-  claude: "#f97316",
-  chatgpt: "#22c55e",
-  "cursor-vscode": "#3b82f6",
-  cursor: "#3b82f6",
-  gemini: "#a855f7",
-  cline: "#06B6D4",
-  copilot: "#6B7280",
-};
-
-function getAgentColor(agentId: string): string {
-  const id = agentId.toLowerCase();
-  for (const key of Object.keys(AGENT_COLORS)) {
-    if (id.includes(key)) return AGENT_COLORS[key];
-  }
-  return "#374151";
-}
+import { getAgentColor } from "../utils";
 
 const TOKENS_PER_RECALL = 750;
 const COST_PER_MILLION = 3;
