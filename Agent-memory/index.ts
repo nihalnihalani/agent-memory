@@ -32,7 +32,7 @@ import {
   getMemoryHistory,
   getRecentChanges,
 } from "./src/db/queries.js";
-import type { SearchResultRow, HandoffRow } from "./src/db/queries.js";
+import type { SearchResultRow } from "./src/db/queries.js";
 import { agentDisplayName, relativeTime, truncate, getAgentId } from "./src/tools/helpers.js";
 
 // --- Database initialization ---

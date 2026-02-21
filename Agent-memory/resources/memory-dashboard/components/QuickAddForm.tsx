@@ -1,14 +1,7 @@
 import React, { useState } from "react";
+import { TYPE_COLORS } from "../utils";
 
 const MEMORY_TYPES = ["decision", "preference", "task", "snippet", "note"];
-
-const TYPE_COLORS: Record<string, string> = {
-  decision: "#3B82F6",
-  preference: "#8B5CF6",
-  task: "#F59E0B",
-  snippet: "#10B981",
-  note: "#6B7280",
-};
 
 interface QuickAddFormProps {
   isDark: boolean;
@@ -57,6 +50,7 @@ export default function QuickAddForm({
     outline: "none",
     fontFamily: "inherit",
     transition: "border-color 0.2s ease",
+    boxSizing: "border-box" as const,
   };
 
   return (
