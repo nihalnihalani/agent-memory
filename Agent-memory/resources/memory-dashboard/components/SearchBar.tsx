@@ -48,6 +48,7 @@ export default function SearchBar({
             ? "0 0 0 3px rgba(139, 92, 246, 0.12), 0 0 20px rgba(139, 92, 246, 0.06)"
             : "none",
           fontFamily: "inherit",
+          boxSizing: "border-box",
         }}
       />
       <button

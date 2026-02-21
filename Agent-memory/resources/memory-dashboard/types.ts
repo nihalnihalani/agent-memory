@@ -49,4 +49,6 @@ export interface WidgetProps {
   contextMemories?: Memory[];
   decisions?: Memory[];
   preferences?: Memory[];
+  originalAgent?: string;
+  originalValue?: string;
 }

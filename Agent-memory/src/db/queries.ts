@@ -201,8 +201,9 @@ function searchWithLike(db: Database.Database, params: SearchParams, limit: numb
   let sql = `SELECT *, 0.0 as rank FROM memories m WHERE 1=1`;
   const bindings: (string | number)[] = [];
 
-  const likePattern = `%${params.query}%`;
-  sql += ` AND (m.key LIKE ? OR m.value LIKE ? OR m.context LIKE ?)`;
+  const escapedQuery = params.query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  const likePattern = `%${escapedQuery}%`;
+  sql += ` AND (m.key LIKE ? ESCAPE '\\' OR m.value LIKE ? ESCAPE '\\' OR m.context LIKE ? ESCAPE '\\')`;
   bindings.push(likePattern, likePattern, likePattern);
 
   if (params.type) {
@@ -222,10 +223,13 @@ function searchWithLike(db: Database.Database, params: SearchParams, limit: numb
 }
 
 export function deleteMemory(db: Database.Database, key: string): MemoryRow | null {
-  const memory = db.prepare(`SELECT * FROM memories WHERE key = ?`).get(key) as MemoryRow | undefined;
-  if (!memory) return null;
-  db.prepare(`DELETE FROM memories WHERE key = ?`).run(key);
-  return memory;
+  const transaction = db.transaction(() => {
+    const memory = db.prepare(`SELECT * FROM memories WHERE key = ?`).get(key) as MemoryRow | undefined;
+    if (!memory) return null;
+    db.prepare(`DELETE FROM memories WHERE key = ?`).run(key);
+    return memory;
+  });
+  return transaction();
 }
 
 export function listMemories(db: Database.Database, params: ListParams): { memories: MemoryRow[]; total: number } {
@@ -376,11 +380,10 @@ interface CreateHandoffParams {
 }
 
 export function createHandoff(db: Database.Database, params: CreateHandoffParams): HandoffRow {
-  const stmt = db.prepare(`
+  const result = db.prepare(`
     INSERT INTO handoffs (from_agent, to_agent, summary, stuck_reason, next_steps, context_keys)
     VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(
+  `).run(
     params.from_agent,
     params.to_agent || null,
     params.summary,
@@ -388,7 +391,7 @@ export function createHandoff(db: Database.Database, params: CreateHandoffParams
     params.next_steps,
     params.context_keys ? JSON.stringify(params.context_keys) : null
   );
-  return db.prepare(`SELECT * FROM handoffs ORDER BY id DESC LIMIT 1`).get() as HandoffRow;
+  return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(result.lastInsertRowid) as HandoffRow;
 }
 
 export function getPendingHandoffs(db: Database.Database): HandoffRow[] {
@@ -404,25 +407,25 @@ export function getAllHandoffs(db: Database.Database, limit: number = 20): Hando
 }
 
 export function pickupHandoff(db: Database.Database, handoffId: number, agentId: string): HandoffRow | null {
-  const handoff = db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow | undefined;
-  if (!handoff || handoff.status !== "pending") return null;
-
-  db.prepare(`
+  // Atomic: only update if still pending (prevents TOCTOU race condition)
+  const result = db.prepare(`
     UPDATE handoffs SET status = 'in_progress', picked_up_by = ?, picked_up_at = datetime('now')
-    WHERE id = ?
+    WHERE id = ? AND status = 'pending'
   `).run(agentId, handoffId);
+
+  if (result.changes === 0) return null;
 
   return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
 }
 
 export function completeHandoff(db: Database.Database, handoffId: number): HandoffRow | null {
-  const handoff = db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow | undefined;
-  if (!handoff) return null;
-
-  db.prepare(`
+  // Atomic: only complete if currently in_progress
+  const result = db.prepare(`
     UPDATE handoffs SET status = 'completed', completed_at = datetime('now')
-    WHERE id = ?
+    WHERE id = ? AND status = 'in_progress'
   `).run(handoffId);
+
+  if (result.changes === 0) return null;
 
   return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
 }
@@ -439,13 +442,6 @@ export interface MemoryHistoryRow {
   old_context: string | null;
   changed_by: string | null;
   changed_at: string;
-}
-
-export function recordMemoryHistory(db: Database.Database, memoryId: number, oldValue: string, oldType: string | null, oldContext: string | null, changedBy: string): void {
-  db.prepare(`
-    INSERT INTO memory_history (memory_id, old_value, old_type, old_context, changed_by)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(memoryId, oldValue, oldType, oldContext, changedBy);
 }
 
 export function getMemoryHistory(db: Database.Database, memoryId: number): MemoryHistoryRow[] {
