@@ -56,6 +56,15 @@ export const ACTION_VERBS: Record<string, string> = {
   recall: "searched",
   forget: "deleted",
   list_memories: "browsed",
+  handoff: "handed off",
+  pickup: "picked up",
+  complete_handoff: "completed",
+};
+
+export const HANDOFF_STATUS_COLORS: Record<string, string> = {
+  pending: "#F59E0B",
+  in_progress: "#3B82F6",
+  completed: "#22c55e",
 };
 
 // ── Helper Functions ─────────────────────────────────────────

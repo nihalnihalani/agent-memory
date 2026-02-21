@@ -20,6 +20,21 @@ export interface Activity {
   created_at: string;
 }
 
+export interface Handoff {
+  id: number;
+  from_agent: string;
+  to_agent: string | null;
+  status: string;
+  summary: string;
+  stuck_reason: string | null;
+  next_steps: string;
+  context_keys: string[];
+  picked_up_by: string | null;
+  created_at: string;
+  picked_up_at: string | null;
+  completed_at: string | null;
+}
+
 export interface WidgetProps {
   memories?: Memory[];
   activities?: Activity[];
@@ -30,4 +45,8 @@ export interface WidgetProps {
   deletedKey?: string;
   deletedType?: string;
   agent?: string;
+  handoff?: Handoff;
+  contextMemories?: Memory[];
+  decisions?: Memory[];
+  preferences?: Memory[];
 }
