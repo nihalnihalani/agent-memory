@@ -1,0 +1,122 @@
+[
+  {
+    "key": "db-choice-postgresql",
+    "value": "Project uses PostgreSQL 16 on port 5433. Chosen over MySQL for JSONB support and better indexing on complex queries. Using pg driver with connection pooling via pgBouncer.",
+    "type": "decision",
+    "context": "Evaluated MySQL, PostgreSQL, and MongoDB. PostgreSQL won due to JSONB support for flexible schema fields and superior full-text search capabilities.",
+    "agent_id": "claude-ai",
+    "tags": ["database", "architecture", "postgresql"]
+  },
+  {
+    "key": "frontend-framework-react",
+    "value": "Using React 19 with TypeScript for the frontend. Next.js 15 for SSR and routing. Tailwind CSS v4 for styling.",
+    "type": "decision",
+    "context": "Team has most experience with React. Vue was considered but ecosystem maturity and hiring pool favored React.",
+    "agent_id": "cursor-vscode",
+    "tags": ["frontend", "architecture", "react"]
+  },
+  {
+    "key": "api-style-rest",
+    "value": "REST API with OpenAPI 3.1 spec. Using Express.js with zod for request validation. Versioned under /api/v1/.",
+    "type": "decision",
+    "context": "GraphQL was considered but REST is simpler for our CRUD-heavy use case. OpenAPI generates client SDKs automatically.",
+    "agent_id": "claude-ai",
+    "tags": ["api", "architecture", "rest"]
+  },
+  {
+    "key": "hosting-decision-vercel-railway",
+    "value": "Frontend on Vercel, backend on Railway, database on Railway PostgreSQL. CI/CD via GitHub Actions.",
+    "type": "decision",
+    "context": "Vercel has best Next.js support. Railway chosen over Render for simpler PostgreSQL provisioning and private networking.",
+    "agent_id": "ChatGPT",
+    "tags": ["deployment", "architecture", "infrastructure"]
+  },
+  {
+    "key": "user-prefers-dark-mode",
+    "value": "User strongly prefers dark mode in all applications. Default theme should always be dark. Use oklch color space for better contrast ratios.",
+    "type": "preference",
+    "context": "User mentioned this multiple times across sessions. Applies to all UI work.",
+    "agent_id": "ChatGPT",
+    "tags": ["ui", "preference", "theme"]
+  },
+  {
+    "key": "user-prefers-typescript",
+    "value": "Always use TypeScript over JavaScript. Strict mode enabled. No any types allowed except in test files. Use zod for runtime validation.",
+    "type": "preference",
+    "context": "User is adamant about type safety. Every new file should be .ts or .tsx.",
+    "agent_id": "claude-ai",
+    "tags": ["language", "preference", "typescript"]
+  },
+  {
+    "key": "user-prefers-tabs",
+    "value": "Use tabs for indentation, not spaces. Tab width of 2. Prettier configured with useTabs: true.",
+    "type": "preference",
+    "context": "User's .editorconfig and prettier config both specify tabs.",
+    "agent_id": "cursor-vscode",
+    "tags": ["formatting", "preference", "editor"]
+  },
+  {
+    "key": "task-implement-auth",
+    "value": "Implement authentication using Clerk. Support Google OAuth and email/password. Add middleware to protect /api/v1/* routes. Store user ID in JWT claims.",
+    "type": "task",
+    "context": "Auth is blocking the user dashboard and API key management features. Priority: high.",
+    "agent_id": "claude-ai",
+    "tags": ["auth", "task", "backend"]
+  },
+  {
+    "key": "task-deploy-production",
+    "value": "Deploy to Vercel (frontend) and Railway (backend). Set up CI/CD with GitHub Actions. Environment variables in Vercel dashboard. PostgreSQL on Railway.",
+    "type": "task",
+    "context": "Current staging environment works. Need to set up production with proper secrets management.",
+    "agent_id": "ChatGPT",
+    "tags": ["deployment", "task", "devops"]
+  },
+  {
+    "key": "task-write-tests",
+    "value": "Write integration tests for all API endpoints using Vitest. Aim for 80% coverage on /api/v1/ routes. Mock database with testcontainers.",
+    "type": "task",
+    "context": "No tests exist yet. Start with the most critical endpoints: auth, users, projects.",
+    "agent_id": "cursor-vscode",
+    "tags": ["testing", "task", "backend"]
+  },
+  {
+    "key": "snippet-db-connection",
+    "value": "import { Pool } from 'pg';\n\nconst pool = new Pool({\n  connectionString: process.env.DATABASE_URL,\n  max: 20,\n  idleTimeoutMillis: 30000,\n  connectionTimeoutMillis: 2000,\n});\n\nexport default pool;",
+    "type": "snippet",
+    "context": "Standard database connection pattern used across all backend services.",
+    "agent_id": "claude-ai",
+    "tags": ["database", "snippet", "postgresql"]
+  },
+  {
+    "key": "snippet-api-error-handler",
+    "value": "app.use((err: Error, req: Request, res: Response, next: NextFunction) => {\n  console.error(err.stack);\n  const status = err instanceof AppError ? err.statusCode : 500;\n  res.status(status).json({\n    error: err.message,\n    code: err instanceof AppError ? err.code : 'INTERNAL_ERROR',\n  });\n});",
+    "type": "snippet",
+    "context": "Global error handler middleware. AppError is our custom error class with statusCode and code fields.",
+    "agent_id": "ChatGPT",
+    "tags": ["error-handling", "snippet", "express"]
+  },
+  {
+    "key": "note-standup-feb20",
+    "value": "Standup notes: Auth integration 80% complete. Blocking issue with Clerk webhook verification -- SVIX signature mismatch on localhost. Workaround: skip verification in dev.",
+    "type": "note",
+    "context": "Daily standup meeting notes. Follow up on webhook issue before deploying to production.",
+    "agent_id": "claude-ai",
+    "tags": ["meeting", "note", "auth"]
+  },
+  {
+    "key": "note-login-bug",
+    "value": "Bug: Login form submits twice on slow connections. Cause: missing disabled state on submit button during async operation. Fix: add isLoading state to useAuth hook.",
+    "type": "note",
+    "context": "Reported by QA. Reproducible on throttled network. Fix should be quick.",
+    "agent_id": "ChatGPT",
+    "tags": ["bug", "note", "auth", "frontend"]
+  },
+  {
+    "key": "note-perf-metrics",
+    "value": "Performance baseline: API p50=45ms, p95=120ms, p99=340ms. Frontend LCP=1.2s, FID=50ms, CLS=0.05. Target: keep p95 under 200ms and LCP under 2s.",
+    "type": "note",
+    "context": "Measured with Datadog APM and Lighthouse. These are our benchmarks for the next sprint.",
+    "agent_id": "cursor-vscode",
+    "tags": ["performance", "note", "metrics"]
+  }
+]

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Memory Widget - Test Harness</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 18px; margin-bottom: 8px; }
+  .subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 20px; }
+
+  .widget-frame {
+    width: 620px;
+    height: 420px;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .widget-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .controls button {
+    background: #334155;
+    border: 1px solid #475569;
+    color: #e2e8f0;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .controls button:hover {
+    background: #475569;
+    border-color: #8B5CF6;
+  }
+
+  .log {
+    margin-top: 16px;
+    width: 620px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 11px;
+    font-family: 'SF Mono', Monaco, monospace;
+    color: #94a3b8;
+  }
+  .log-entry { margin-bottom: 4px; }
+  .log-entry.incoming { color: #10B981; }
+  .log-entry.outgoing { color: #8B5CF6; }
+</style>
+</head>
+<body>
+
+<h1>Agent Memory Widget Test Harness</h1>
+<p class="subtitle">This page mocks the MCP Apps postMessage protocol to test the widget locally.</p>
+
+<div class="widget-frame">
+  <iframe id="widgetFrame" src="widget.html"></iframe>
+</div>
+
+<div class="controls">
+  <button onclick="addMemory()">+ Add Memory</button>
+  <button onclick="addDecision()">+ Add Decision</button>
+  <button onclick="addPreference()">+ Add Preference</button>
+  <button onclick="addTask()">+ Add Task</button>
+  <button onclick="addSnippet()">+ Add Snippet</button>
+  <button onclick="switchAgent()">Switch Agent</button>
+  <button onclick="clearAll()">Clear All</button>
+  <button onclick="pushActivity()">+ Activity</button>
+</div>
+
+<div class="log" id="logPanel">
+  <div class="log-entry" style="color: #64748b;">-- Message log --</div>
+</div>
+
+<script>
+// ── Mock Data Store ────────────────────────────────────────
+let mockMemories = [
+  {
+    id: 1, key: 'project-database', value: 'Using PostgreSQL 16 on port 5433. Chose over MySQL for JSONB support and better concurrent read performance.',
+    type: 'decision', agent_id: 'claude-desktop', context: 'Evaluated MySQL vs PostgreSQL for new project. PostgreSQL won due to native JSONB support.',
+    tags: ['database', 'architecture'], created_at: '2026-02-21T08:30:00Z', updated_at: '2026-02-21T08:30:00Z', access_count: 3
+  },
+  {
+    id: 2, key: 'user-prefers-dark-mode', value: 'User strongly prefers dark mode across all applications. Also prefers tabs over spaces and TypeScript over JavaScript.',
+    type: 'preference', agent_id: 'chatgpt', context: 'User explicitly stated preferences during initial setup conversation.',
+    tags: ['ui', 'settings'], created_at: '2026-02-21T09:15:00Z', updated_at: '2026-02-21T09:15:00Z', access_count: 7
+  },
+  {
+    id: 3, key: 'api-auth-pattern', value: 'Using JWT with refresh tokens. Access tokens expire after 15 minutes. Refresh tokens rotate on use and expire after 7 days.',
+    type: 'decision', agent_id: 'cursor', context: 'Implemented auth following OWASP recommendations. Considered session-based auth but JWT is better for our microservices architecture.',
+    tags: ['auth', 'security', 'api'], created_at: '2026-02-21T10:00:00Z', updated_at: '2026-02-21T10:00:00Z', access_count: 5
+  },
+  {
+    id: 4, key: 'fix-memory-leak-websocket', value: 'WebSocket connections were not being cleaned up on component unmount. Added cleanup in useEffect return. Also added reconnection logic with exponential backoff.',
+    type: 'task', agent_id: 'claude-desktop', context: 'User reported increasing memory usage over time. Root cause: event listeners piling up.',
+    tags: ['bug', 'websocket', 'react'], created_at: '2026-02-21T11:30:00Z', updated_at: '2026-02-21T11:30:00Z', access_count: 1
+  },
+  {
+    id: 5, key: 'docker-compose-config', value: 'version: "3.8"\nservices:\n  api:\n    build: .\n    ports:\n      - "3000:3000"\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_DB: agentmem',
+    type: 'snippet', agent_id: 'vscode', context: 'Standard docker-compose for local development. Includes API and database services.',
+    tags: ['docker', 'devops', 'config'], created_at: '2026-02-21T07:00:00Z', updated_at: '2026-02-21T07:00:00Z', access_count: 2
+  },
+  {
+    id: 6, key: 'meeting-notes-sprint-planning', value: 'Sprint 4 goals: 1) Complete auth system 2) Dashboard v2 3) Performance optimization. Team agreed to 2-week sprints moving forward.',
+    type: 'note', agent_id: 'chatgpt', context: 'Summarized from weekly sprint planning meeting on Monday.',
+    tags: ['meeting', 'sprint', 'planning'], created_at: '2026-02-20T14:00:00Z', updated_at: '2026-02-20T14:00:00Z', access_count: 4
+  },
+  {
+    id: 7, key: 'testing-strategy', value: 'Use Vitest for unit tests, Playwright for e2e. Aim for 80% coverage on business logic. Skip testing UI components that are purely presentational.',
+    type: 'decision', agent_id: 'claude-desktop', context: 'Decided after comparing Jest vs Vitest performance. Vitest is 3x faster for our setup.',
+    tags: ['testing', 'architecture'], created_at: '2026-02-20T16:00:00Z', updated_at: '2026-02-21T09:00:00Z', access_count: 6
+  },
+  {
+    id: 8, key: 'deploy-to-staging', value: 'Current deployment target: staging.example.com. Using GitHub Actions CI/CD pipeline. Auto-deploys on merge to main branch.',
+    type: 'task', agent_id: 'cursor', context: 'Setting up continuous deployment for the staging environment.',
+    tags: ['deployment', 'ci-cd'], created_at: '2026-02-21T12:00:00Z', updated_at: '2026-02-21T12:00:00Z', access_count: 0
+  },
+];
+
+let mockActivities = [
+  { id: 1, agent_id: 'claude-desktop', action: 'remember', target_key: 'project-database', detail: 'Stored database decision after evaluating PostgreSQL vs MySQL', created_at: '2026-02-21T08:30:00Z' },
+  { id: 2, agent_id: 'chatgpt', action: 'remember', target_key: 'user-prefers-dark-mode', detail: 'Saved user UI preferences from setup conversation', created_at: '2026-02-21T09:15:00Z' },
+  { id: 3, agent_id: 'cursor', action: 'recall', target_key: null, detail: 'Searched for "database" to find project DB configuration', created_at: '2026-02-21T09:45:00Z' },
+  { id: 4, agent_id: 'cursor', action: 'remember', target_key: 'api-auth-pattern', detail: 'Stored JWT authentication pattern decision', created_at: '2026-02-21T10:00:00Z' },
+  { id: 5, agent_id: 'claude-desktop', action: 'remember', target_key: 'fix-memory-leak-websocket', detail: 'Documented WebSocket memory leak fix and solution', created_at: '2026-02-21T11:30:00Z' },
+  { id: 6, agent_id: 'chatgpt', action: 'recall', target_key: null, detail: 'Searched for "auth" pattern to assist with API integration', created_at: '2026-02-21T11:45:00Z' },
+  { id: 7, agent_id: 'vscode', action: 'remember', target_key: 'docker-compose-config', detail: 'Saved Docker Compose configuration snippet', created_at: '2026-02-21T07:00:00Z' },
+  { id: 8, agent_id: 'chatgpt', action: 'list_memories', target_key: null, detail: 'Browsed all memories to build context for new conversation', created_at: '2026-02-21T12:30:00Z' },
+];
+
+let currentMockAgent = 'claude-desktop';
+const agents = ['claude-desktop', 'chatgpt', 'cursor', 'vscode'];
+let agentIndex = 0;
+let nextId = 20;
+
+// ── Logging ────────────────────────────────────────────────
+function log(dir, msg) {
+  const panel = document.getElementById('logPanel');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + dir;
+  const ts = new Date().toLocaleTimeString();
+  entry.textContent = '[' + ts + '] ' + (dir === 'incoming' ? '<- ' : '-> ') + msg;
+  panel.appendChild(entry);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ── Mock MCP Server ────────────────────────────────────────
+const widgetFrame = document.getElementById('widgetFrame');
+
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || typeof data !== 'object') return;
+
+  // Handle JSON-RPC protocol (ext-apps style)
+  if (data.jsonrpc === '2.0' && data.method) {
+    log('incoming', 'jsonrpc: ' + data.method + '(' + JSON.stringify(data.params || {}).substring(0, 80) + ')');
+
+    if (data.method === 'ui/initialize') {
+      // Respond to initialization
+      setTimeout(() => {
+        widgetFrame.contentWindow.postMessage({
+          jsonrpc: '2.0', id: data.id,
+          result: { success: true }
+        }, '*');
+        log('outgoing', 'jsonrpc: ui/initialize response');
+      }, 50);
+      return;
+    }
+
+    if (data.method === 'tools/call') {
+      const params = data.params || {};
+      let result;
+      switch (params.name) {
+        case 'list_memories': result = handleListMemories(params.arguments || {}); break;
+        case 'recall': result = handleRecall(params.arguments || {}); break;
+        case 'forget': result = handleForget(params.arguments || {}); break;
+        case 'remember': result = handleRemember(params.arguments || {}); break;
+        default: result = { error: 'Unknown tool: ' + params.name };
+      }
+
+      setTimeout(() => {
+        widgetFrame.contentWindow.postMessage({
+          jsonrpc: '2.0', id: data.id,
+          result: { content: [{ type: 'text', text: JSON.stringify(result) }] }
+        }, '*');
+        log('outgoing', 'jsonrpc: tools/call result (' + params.name + ')');
+      }, 100 + Math.random() * 200);
+      return;
+    }
+    return;
+  }
+
+  // Handle simple protocol (fallback)
+  if (data.type !== 'tool_call') return;
+
+  log('incoming', 'tool_call: ' + data.name + '(' + JSON.stringify(data.arguments) + ')');
+
+  let result;
+  switch (data.name) {
+    case 'list_memories': result = handleListMemories(data.arguments); break;
+    case 'recall': result = handleRecall(data.arguments); break;
+    case 'forget': result = handleForget(data.arguments); break;
+    case 'remember': result = handleRemember(data.arguments); break;
+    default: result = { error: 'Unknown tool: ' + data.name };
+  }
+
+  // Simulate slight network delay
+  setTimeout(() => {
+    const response = {
+      type: 'tool_result',
+      id: data.id,
+      result: result
+    };
+    log('outgoing', 'tool_result: ' + JSON.stringify(result).substring(0, 100) + '...');
+    widgetFrame.contentWindow.postMessage(response, '*');
+  }, 100 + Math.random() * 200);
+});
+
+function handleListMemories(args) {
+  let filtered = [...mockMemories];
+  if (args.type && args.type !== 'all') {
+    filtered = filtered.filter(m => m.type === args.type);
+  }
+  if (args.tags && args.tags.length > 0) {
+    filtered = filtered.filter(m => {
+      if (!m.tags) return false;
+      return args.tags.some(t => m.tags.includes(t));
+    });
+  }
+  const limit = args.limit || 50;
+  const offset = args.offset || 0;
+  filtered.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
+  // Also return activities
+  return {
+    memories: filtered.slice(offset, offset + limit),
+    activities: mockActivities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+    total: filtered.length
+  };
+}
+
+function handleRecall(args) {
+  const query = (args.query || '').toLowerCase();
+  let results = mockMemories.filter(m => {
+    const text = (m.key + ' ' + m.value + ' ' + (m.context || '')).toLowerCase();
+    return text.includes(query);
+  });
+  if (args.type && args.type !== 'all') {
+    results = results.filter(m => m.type === args.type);
+  }
+  const limit = args.limit || 5;
+  return {
+    memories: results.slice(0, limit),
+    total: results.length
+  };
+}
+
+function handleForget(args) {
+  const idx = mockMemories.findIndex(m => m.key === args.key);
+  if (idx === -1) return { success: false, message: 'Memory not found: ' + args.key };
+  mockMemories.splice(idx, 1);
+
+  mockActivities.unshift({
+    id: nextId++, agent_id: currentMockAgent, action: 'forget',
+    target_key: args.key, detail: 'Deleted memory: ' + args.key,
+    created_at: new Date().toISOString()
+  });
+
+  return { success: true, message: 'Deleted memory: ' + args.key };
+}
+
+function handleRemember(args) {
+  const existing = mockMemories.findIndex(m => m.key === args.key);
+  const mem = {
+    id: nextId++, key: args.key, value: args.value,
+    type: args.type || 'note', agent_id: currentMockAgent,
+    context: args.context || '', tags: args.tags || [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(), access_count: 0
+  };
+
+  if (existing !== -1) {
+    mockMemories[existing] = { ...mockMemories[existing], ...mem, id: mockMemories[existing].id };
+  } else {
+    mockMemories.unshift(mem);
+  }
+
+  mockActivities.unshift({
+    id: nextId++, agent_id: currentMockAgent, action: 'remember',
+    target_key: args.key, detail: 'Stored: ' + args.value.substring(0, 60),
+    created_at: new Date().toISOString()
+  });
+
+  return { success: true, memory: mem };
+}
+
+// ── Test Controls ──────────────────────────────────────────
+function addMemory() {
+  const key = 'note-' + Date.now().toString(36);
+  sendRemember(key, 'This is a test note created at ' + new Date().toLocaleTimeString(), 'note', ['test']);
+}
+
+function addDecision() {
+  const decisions = [
+    { key: 'use-react-query', value: 'Chose React Query over SWR for data fetching. Better devtools and mutation support.', tags: ['react', 'data'] },
+    { key: 'monorepo-structure', value: 'Using Turborepo for monorepo management. Packages: ui, api, shared-types.', tags: ['architecture', 'tooling'] },
+    { key: 'error-boundary-strategy', value: 'Implemented React error boundaries at route level. Each page catches its own errors gracefully.', tags: ['react', 'error-handling'] },
+  ];
+  const d = decisions[Math.floor(Math.random() * decisions.length)];
+  sendRemember(d.key, d.value, 'decision', d.tags);
+}
+
+function addPreference() {
+  const prefs = [
+    { key: 'code-style-semicolons', value: 'No semicolons in TypeScript. Using ESLint with prettier for formatting.', tags: ['code-style'] },
+    { key: 'terminal-shell', value: 'User uses zsh with oh-my-zsh. Starship prompt. Prefers kitty terminal.', tags: ['tools'] },
+    { key: 'commit-style', value: 'Conventional commits format. Always include ticket number in commit body.', tags: ['git', 'workflow'] },
+  ];
+  const p = prefs[Math.floor(Math.random() * prefs.length)];
+  sendRemember(p.key, p.value, 'preference', p.tags);
+}
+
+function addTask() {
+  const tasks = [
+    { key: 'implement-search', value: 'Add full-text search to the API. Use PostgreSQL tsvector for indexing.', tags: ['feature', 'search'] },
+    { key: 'upgrade-dependencies', value: 'Update all npm packages to latest. Pay attention to breaking changes in React 19.', tags: ['maintenance'] },
+    { key: 'write-api-tests', value: 'Add integration tests for all API endpoints. Use supertest + vitest.', tags: ['testing', 'api'] },
+  ];
+  const t = tasks[Math.floor(Math.random() * tasks.length)];
+  sendRemember(t.key, t.value, 'task', t.tags);
+}
+
+function addSnippet() {
+  const snippets = [
+    { key: 'fetch-wrapper', value: 'const api = {\n  get: (url) => fetch(url).then(r => r.json()),\n  post: (url, data) => fetch(url, { method: "POST", body: JSON.stringify(data) })\n}', tags: ['utility', 'api'] },
+    { key: 'debounce-hook', value: 'function useDebounce(value, delay) {\n  const [debouncedValue, setDebouncedValue] = useState(value)\n  useEffect(() => {\n    const handler = setTimeout(() => setDebouncedValue(value), delay)\n    return () => clearTimeout(handler)\n  }, [value, delay])\n  return debouncedValue\n}', tags: ['react', 'hooks'] },
+  ];
+  const s = snippets[Math.floor(Math.random() * snippets.length)];
+  sendRemember(s.key, s.value, 'snippet', s.tags);
+}
+
+function sendRemember(key, value, type, tags) {
+  const data = {
+    type: 'tool_call',
+    id: 'test_' + Date.now(),
+    name: 'remember',
+    arguments: { key, value, type, tags }
+  };
+  // Simulate as if widget made the call, handle and push update
+  handleRemember(data.arguments);
+
+  // Push state update to widget
+  widgetFrame.contentWindow.postMessage({
+    type: 'state_update',
+    memories: [...mockMemories].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
+    activities: [...mockActivities].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }, '*');
+
+  log('outgoing', 'state_update pushed (' + mockMemories.length + ' memories)');
+}
+
+function switchAgent() {
+  agentIndex = (agentIndex + 1) % agents.length;
+  currentMockAgent = agents[agentIndex];
+  log('outgoing', 'Switched mock agent to: ' + currentMockAgent);
+}
+
+function clearAll() {
+  mockMemories = [];
+  mockActivities = [];
+  widgetFrame.contentWindow.postMessage({
+    type: 'state_update',
+    memories: [],
+    activities: []
+  }, '*');
+  log('outgoing', 'Cleared all memories and activities');
+}
+
+function pushActivity() {
+  const actions = ['remember', 'recall', 'list_memories', 'forget'];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+  const act = {
+    id: nextId++,
+    agent_id: currentMockAgent,
+    action: action,
+    target_key: action === 'recall' ? null : (mockMemories[0] ? mockMemories[0].key : 'test-key'),
+    detail: 'Test activity: ' + action + ' at ' + new Date().toLocaleTimeString(),
+    created_at: new Date().toISOString()
+  };
+  mockActivities.unshift(act);
+
+  widgetFrame.contentWindow.postMessage({
+    type: 'state_update',
+    activities: [...mockActivities]
+  }, '*');
+  log('outgoing', 'Pushed activity: ' + action);
+}
+</script>
+</body>
+</html>
