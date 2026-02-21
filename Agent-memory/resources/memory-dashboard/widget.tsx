@@ -7,6 +7,7 @@ import SearchBar from "./components/SearchBar";
 import TypeFilter from "./components/TypeFilter";
 import StatsBar from "./components/StatsBar";
 import ActivityFeed from "./components/ActivityFeed";
+import QuickAddForm from "./components/QuickAddForm";
 
 export const widgetMetadata: WidgetMetadata = {
   description: "Interactive agent memory dashboard with search, filtering, and AI analysis",
@@ -56,6 +57,7 @@ function MemoryDashboardInner() {
   const activeTab = (state?.activeTab as string) || "memories";
   const searchQuery = (state?.searchQuery as string) || "";
   const typeFilter = (state?.typeFilter as string | null) || null;
+  const showAddForm = (state?.showAddForm as boolean) || false;
 
   // ---- Handlers ----
 
@@ -84,10 +86,12 @@ function MemoryDashboardInner() {
     await setState((prev: any) => ({ ...prev, activeTab: tab }));
   };
 
-  const handleAnalyze = () => {
-    sendFollowUpMessage(
-      "Analyze the memories in my Agent Memory dashboard. Identify patterns, potential conflicts between decisions, and any gaps in the project context.",
-    );
+  const handleToggleAddForm = async () => {
+    await setState((prev: any) => ({ ...prev, showAddForm: !prev?.showAddForm }));
+  };
+
+  const handleQuickAdd = async (key: string, value: string, type: string) => {
+    await callTool("remember", { key, value, type });
   };
 
   // ---- Styles ----
@@ -221,7 +225,43 @@ function MemoryDashboardInner() {
             title="Live"
           />
         </div>
+        <button
+          onClick={handleToggleAddForm}
+          title="Add a memory"
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: showAddForm
+              ? "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)"
+              : isDark
+                ? "#1e293b"
+                : "#f1f5f9",
+            border: `1px solid ${showAddForm ? "transparent" : borderColor}`,
+            color: showAddForm ? "#ffffff" : textMuted,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            fontSize: 16,
+            fontWeight: 300,
+            lineHeight: 1,
+            fontFamily: "inherit",
+          }}
+        >
+          {showAddForm ? "\u00D7" : "+"}
+        </button>
       </div>
+
+      {/* ---- Quick Add Form ---- */}
+      {showAddForm && (
+        <QuickAddForm
+          isDark={isDark}
+          onAdd={handleQuickAdd}
+          onClose={handleToggleAddForm}
+        />
+      )}
 
       {/* ---- Stats ---- */}
       <StatsBar memories={memories} total={total} isDark={isDark} />
@@ -302,37 +342,15 @@ function MemoryDashboardInner() {
         )}
       </div>
 
-      {/* ---- Analyze Button ---- */}
-      {memories.length > 0 && (
-        <div
-          style={{
-            padding: "10px 16px",
-            borderTop: `1px solid ${borderColor}`,
-            background: bg,
-          }}
-        >
-          <button
-            onClick={handleAnalyze}
-            style={{
-              width: "100%",
-              padding: "8px 16px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 500,
-              color: "#e2e8f0",
-              background:
-                "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              fontFamily: "inherit",
-              boxShadow: "0 2px 8px rgba(139,92,246,0.3)",
-            }}
-          >
-            Ask AI to Analyze Memories
-          </button>
-        </div>
-      )}
+      {/* ---- Ask About My Memories ---- */}
+      <AskAboutMemories
+        isDark={isDark}
+        borderColor={borderColor}
+        bg={bg}
+        textMuted={textMuted}
+        hasMemories={memories.length > 0}
+        sendFollowUpMessage={sendFollowUpMessage}
+      />
 
       {/* ---- Scrollbar & animation styles ---- */}
       <style>{`
@@ -345,6 +363,100 @@ function MemoryDashboardInner() {
         ::-webkit-scrollbar-thumb { background: ${isDark ? "#475569" : "#cbd5e1"}; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: ${isDark ? "#64748b" : "#94a3b8"}; }
       `}</style>
+    </div>
+  );
+}
+
+const AI_PROMPTS = [
+  {
+    label: "Summarize Context",
+    icon: "\u{1F4CB}",
+    message: "Summarize my project context from stored memories. Give me a concise overview of what you know.",
+  },
+  {
+    label: "Find Conflicts",
+    icon: "\u26A0\uFE0F",
+    message: "Are there any conflicts between my stored decisions? Look for contradictions or outdated preferences.",
+  },
+  {
+    label: "Identify Gaps",
+    icon: "\u{1F50D}",
+    message: "What context am I missing based on my current memories? What should I store to improve our workflow?",
+  },
+  {
+    label: "Full Analysis",
+    icon: "\u{1F9E0}",
+    message: "Analyze the memories in my Agent Memory dashboard. Identify patterns, potential conflicts between decisions, and any gaps in the project context.",
+  },
+];
+
+function AskAboutMemories({
+  isDark,
+  borderColor,
+  bg,
+  textMuted,
+  hasMemories,
+  sendFollowUpMessage,
+}: {
+  isDark: boolean;
+  borderColor: string;
+  bg: string;
+  textMuted: string;
+  hasMemories: boolean;
+  sendFollowUpMessage: (msg: string) => void;
+}) {
+  return (
+    <div
+      style={{
+        padding: "10px 12px",
+        borderTop: `1px solid ${borderColor}`,
+        background: bg,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: "uppercase" as const,
+          letterSpacing: 0.5,
+          color: textMuted,
+          marginBottom: 6,
+        }}
+      >
+        Ask AI About My Memories
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {AI_PROMPTS.map((p) => (
+          <button
+            key={p.label}
+            onClick={() => sendFollowUpMessage(p.message)}
+            disabled={!hasMemories}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 500,
+              color: hasMemories
+                ? isDark
+                  ? "#e2e8f0"
+                  : "#1e293b"
+                : textMuted,
+              background: isDark ? "rgba(30,41,59,0.7)" : "#f1f5f9",
+              border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+              cursor: hasMemories ? "pointer" : "not-allowed",
+              transition: "all 0.2s ease",
+              fontFamily: "inherit",
+              opacity: hasMemories ? 1 : 0.5,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <span style={{ fontSize: 12 }}>{p.icon}</span>
+            {p.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

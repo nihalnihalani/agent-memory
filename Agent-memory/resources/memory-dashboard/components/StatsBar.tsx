@@ -21,6 +21,15 @@ function getAgentColor(agentId: string): string {
   return "#374151";
 }
 
+const TOKENS_PER_RECALL = 750;
+const COST_PER_MILLION = 3;
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+  return String(n);
+}
+
 interface StatsBarProps {
   memories: Memory[];
   total: number;
@@ -30,6 +39,7 @@ interface StatsBarProps {
 export default function StatsBar({ memories, total, isDark }: StatsBarProps) {
   const agents = new Map<string, string>();
   const typeCounts: Record<string, number> = {};
+  let totalAccessCount = 0;
 
   for (const m of memories) {
     if (m.agent_id && !agents.has(m.agent_id)) {
@@ -38,7 +48,11 @@ export default function StatsBar({ memories, total, isDark }: StatsBarProps) {
     if (m.type) {
       typeCounts[m.type] = (typeCounts[m.type] || 0) + 1;
     }
+    totalAccessCount += m.access_count || 0;
   }
+
+  const tokensSaved = totalAccessCount * TOKENS_PER_RECALL;
+  const costSaved = (tokensSaved / 1_000_000) * COST_PER_MILLION;
 
   const textColor = isDark ? "#64748b" : "#94a3b8";
 
@@ -78,14 +92,30 @@ export default function StatsBar({ memories, total, isDark }: StatsBarProps) {
           ))}
         <span>{agents.size} {agents.size === 1 ? "agent" : "agents"}</span>
       </span>
-      <span style={{ opacity: 0.5 }}>&middot;</span>
-      {Object.entries(typeCounts)
-        .slice(0, 4)
-        .map(([type, count]) => (
-          <span key={type}>
-            {count} {type}
+      {tokensSaved > 0 && (
+        <>
+          <span style={{ opacity: 0.5 }}>&middot;</span>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              color: "#10B981",
+              fontWeight: 500,
+            }}
+            title={`Each memory recall saves ~${TOKENS_PER_RECALL} tokens vs re-explaining context. ${totalAccessCount} total recalls across ${memories.length} memories.`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+              <polyline points="17 6 23 6 23 12" />
+            </svg>
+            ~{formatTokens(tokensSaved)} tokens saved
+            <span style={{ color: textColor, fontWeight: 400 }}>
+              (${costSaved.toFixed(2)})
+            </span>
           </span>
-        ))}
+        </>
+      )}
     </div>
   );
 }
