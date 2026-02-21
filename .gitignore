@@ -6,3 +6,4 @@ data/memories.db-wal
 *.js
 !resources/**/*.js
 .DS_Store
+gameplan.md.env

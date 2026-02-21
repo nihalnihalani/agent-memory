@@ -8,16 +8,21 @@ import path from "path";
 import { readFileSync } from "fs";
 
 import { initializeDatabase } from "./src/db/schema.js";
+import { initializeSessionsTable } from "./src/db/sessions-schema.js";
 import { seedDatabase } from "./src/db/seed.js";
 import { registerRememberTool } from "./src/tools/remember.js";
 import { registerRecallTool } from "./src/tools/recall.js";
 import { registerForgetTool } from "./src/tools/forget.js";
 import { registerListTool } from "./src/tools/list.js";
+import { registerSaveContextTool } from "./src/tools/save-context.js";
+import { registerLoadContextTool } from "./src/tools/load-context.js";
+import { registerListSessionsTool } from "./src/tools/list-sessions.js";
 import { registerResources } from "./src/context/resource.js";
 
 // Initialize database
 const dbPath = path.join(process.cwd(), "data", "memories.db");
 const db = initializeDatabase(dbPath);
+initializeSessionsTable(db);
 seedDatabase(db);
 
 // Load widget HTML once at startup
@@ -37,6 +42,9 @@ function createMcpServer() {
   registerRecallTool(server, db);
   registerForgetTool(server, db);
   registerListTool(server, db);
+  registerSaveContextTool(server, db);
+  registerLoadContextTool(server, db);
+  registerListSessionsTool(server, db);
   registerResources(server, db);
 
   // Register the dashboard widget as an MCP App resource
@@ -61,6 +69,10 @@ function createMcpServer() {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve the widget dashboard for local preview (browser / VS Code Simple Browser)
+app.use("/dashboard", express.static(path.join(process.cwd(), "resources", "memory-dashboard")));
+app.get("/", (_req, res) => res.redirect("/dashboard/test.html"));
 
 const transports = new Map<string, StreamableHTTPServerTransport>();
 
@@ -147,7 +159,8 @@ const cleanupInterval = setInterval(() => {
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
   console.log(`Agent Memory MCP server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Health check:  http://localhost:${PORT}/health`);
+  console.log(`Dashboard:     http://localhost:${PORT}/dashboard/test.html`);
 });
 
 // Graceful shutdown

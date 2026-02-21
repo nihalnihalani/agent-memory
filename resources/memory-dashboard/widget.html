@@ -173,6 +173,50 @@
   .memory-card:hover .delete-btn { opacity: 1; }
   .delete-btn svg { width: 14px; height: 14px; }
 
+  /* ── Ask AI Button ──────────────────────────────────────── */
+  .ask-btn { opacity: 0; transition: all 0.15s ease; color: #475569; padding: 2px; font-size: 13px; line-height: 1; }
+  .ask-btn:hover { color: #8B5CF6; }
+  .memory-card:hover .ask-btn { opacity: 1; }
+  .ask-btn.sent { opacity: 1; color: #22c55e; }
+
+  /* ── Add Button ─────────────────────────────────────────── */
+  .add-btn {
+    width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: #8B5CF6;
+    font-size: 18px; line-height: 1; transition: all 0.2s ease; flex-shrink: 0;
+  }
+  .add-btn:hover { background: rgba(139,92,246,0.3); border-color: #8B5CF6; transform: scale(1.05); }
+  .add-btn.active { background: #8B5CF6; color: white; }
+
+  /* ── Add Form Panel ─────────────────────────────────────── */
+  .add-form-panel {
+    border-bottom: 1px solid #334155; background: #0f172a;
+    overflow: hidden; max-height: 0; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1), padding 0.3s ease;
+    padding: 0 12px;
+  }
+  .add-form-panel.open { max-height: 320px; padding: 12px; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .form-label { font-size: 10px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input {
+    background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+    font-size: 11px; padding: 6px 10px; border-radius: 6px; width: 100%;
+    font-family: inherit; transition: border-color 0.2s ease;
+  }
+  .form-input:focus { outline: none; border-color: #8B5CF6; }
+  .form-input::placeholder { color: #475569; }
+  .form-select { appearance: none; cursor: pointer; }
+  .form-textarea { resize: none; height: 48px; }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .btn-save {
+    font-size: 11px; padding: 6px 14px; border-radius: 6px; font-weight: 500;
+    background: #8B5CF6; color: white; transition: all 0.2s ease;
+  }
+  .btn-save:hover { background: #7C3AED; }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-cancel { font-size: 11px; padding: 6px 10px; border-radius: 6px; color: #64748b; transition: color 0.2s ease; }
+  .btn-cancel:hover { color: #94a3b8; }
+
   /* ── Activity ──────────────────────────────────────────── */
   .activity-list { padding: 8px 12px; }
   .activity-list > * + * { margin-top: 12px; }
@@ -297,11 +341,54 @@
       <span class="font-semibold text-sm tracking-tight header-title-text">Agent Memory</span>
       <span class="live-dot" id="liveDot" title="Live - polling every 3s"></span>
     </div>
-    <div class="search-wrap">
-      <input id="searchInput" type="text" placeholder="Search memories..." class="search-input" />
-      <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
+    <div class="flex items-center gap-2">
+      <button id="addBtn" class="add-btn" onclick="toggleAddForm()" title="Save a memory">+</button>
+      <div class="search-wrap">
+        <input id="searchInput" type="text" placeholder="Search memories..." class="search-input" />
+        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Memory Form Panel -->
+  <div id="addFormPanel" class="add-form-panel">
+    <div class="form-row">
+      <div class="form-field" style="flex:1.5">
+        <label class="form-label">Key *</label>
+        <input id="fKey" class="form-input" type="text" placeholder="e.g. user-prefers-dark-mode" />
+      </div>
+      <div class="form-field" style="flex:0.8">
+        <label class="form-label">Type</label>
+        <select id="fType" class="form-input form-select">
+          <option value="note">note</option>
+          <option value="decision">decision</option>
+          <option value="preference">preference</option>
+          <option value="task">task</option>
+          <option value="snippet">snippet</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Value *</label>
+        <textarea id="fValue" class="form-input form-textarea" placeholder="What to remember..."></textarea>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Tags (comma-separated)</label>
+        <input id="fTags" class="form-input" type="text" placeholder="e.g. frontend, preference" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Context (why?)</label>
+        <input id="fContext" class="form-input" type="text" placeholder="Why you're storing this" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="toggleAddForm()">Cancel</button>
+      <button id="saveBtn" class="btn-save" onclick="submitMemory()">Save Memory</button>
     </div>
   </div>
 
@@ -592,6 +679,86 @@ function deleteMemory(key) {
   }).catch(function(err) { console.error('Delete failed:', err); });
 }
 
+// ── Add Memory Form ─────────────────────────────────────────
+var addFormOpen = false;
+
+function toggleAddForm() {
+  addFormOpen = !addFormOpen;
+  var panel = document.getElementById('addFormPanel');
+  var btn = document.getElementById('addBtn');
+  if (addFormOpen) {
+    panel.classList.add('open');
+    btn.classList.add('active');
+    btn.textContent = '×';
+    setTimeout(function() { document.getElementById('fKey').focus(); }, 300);
+  } else {
+    panel.classList.remove('open');
+    btn.classList.remove('active');
+    btn.textContent = '+';
+    // Clear form
+    ['fKey','fValue','fTags','fContext'].forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('fType').value = 'note';
+  }
+}
+
+function submitMemory() {
+  var key = document.getElementById('fKey').value.trim();
+  var value = document.getElementById('fValue').value.trim();
+  var type = document.getElementById('fType').value;
+  var tagsRaw = document.getElementById('fTags').value.trim();
+  var context = document.getElementById('fContext').value.trim();
+
+  if (!key || !value) {
+    document.getElementById(key ? 'fValue' : 'fKey').style.borderColor = '#f87171';
+    setTimeout(function() {
+      document.getElementById('fKey').style.borderColor = '';
+      document.getElementById('fValue').style.borderColor = '';
+    }, 1500);
+    return;
+  }
+
+  var tags = tagsRaw ? tagsRaw.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+  var args = { key: key, value: value, type: type };
+  if (tags.length) args.tags = tags;
+  if (context) args.context = context;
+
+  var saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+
+  callServerTool('remember', args).then(function() {
+    saveBtn.textContent = 'Saved ✓';
+    saveBtn.style.background = '#22c55e';
+    setTimeout(function() {
+      toggleAddForm();
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Memory';
+      saveBtn.style.background = '';
+      loadMemories({ type: currentTypeFilter });
+    }, 800);
+  }).catch(function(err) {
+    console.error('Save failed:', err);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Memory';
+  });
+}
+
+function sendFollowUpMessage(text) {
+  return new Promise(function(resolve) {
+    var id = ++rpcIdCounter;
+    pendingCalls[id] = { resolve: resolve, reject: function() { resolve({}); } };
+    window.parent.postMessage({
+      jsonrpc: '2.0', id: id,
+      method: 'ui/message',
+      params: { role: 'user', content: [{ type: 'text', text: text }] }
+    }, '*');
+    // Resolve after timeout — host may not echo a response
+    setTimeout(function() {
+      if (pendingCalls[id]) { delete pendingCalls[id]; resolve({}); }
+    }, 3000);
+  });
+}
+
 function loadActivities() {
   callServerTool('list_memories', { limit: 50 }).then(function(result) {
     if (result && result.activities) { activities = result.activities; }
@@ -712,6 +879,26 @@ function renderMemories(newKeys) {
       badge.textContent = mem.type;
       top.appendChild(badge);
     }
+
+    // Ask AI button
+    var ask = el('button', 'ask-btn');
+    ask.title = 'Ask AI about this memory';
+    ask.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>';
+    ask.onclick = function(e) {
+      e.stopPropagation();
+      var msg = 'Tell me more about the "' + mem.key + '" memory.\n\nStored value: ' + mem.value;
+      if (mem.context) msg += '\n\nContext: ' + mem.context;
+      if (mem.type) msg += '\n\nType: ' + mem.type;
+      ask.classList.add('sent');
+      ask.innerHTML = '✓';
+      sendFollowUpMessage(msg).then(function() {
+        setTimeout(function() {
+          ask.classList.remove('sent');
+          ask.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>';
+        }, 2000);
+      });
+    };
+    top.appendChild(ask);
 
     var del = el('button', 'delete-btn');
     del.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
@@ -872,6 +1059,7 @@ function switchTab(tab) {
   document.getElementById('memoriesTab').className = tab === 'memories' ? 'flex flex-col flex-1 overflow-hidden' : 'hidden';
   document.getElementById('activityTab').className = tab === 'activity' ? 'flex-1 overflow-y-auto' : 'hidden';
   if (tab === 'activity' && activities.length === 0) loadActivities();
+  saveUIState();
 }
 
 // ── Type Filter ────────────────────────────────────────────
@@ -885,12 +1073,14 @@ function filterByType(type) {
   isLoading = true;
   renderMemories();
   loadMemories({ type: type });
+  saveUIState();
 }
 
 // ── Tag Filter ─────────────────────────────────────────────
 function toggleTagFilter(tag) {
   if (currentTagFilter === tag) { currentTagFilter = null; loadMemories({ type: currentTypeFilter }); }
   else { currentTagFilter = tag; loadMemories({ type: currentTypeFilter, tags: [tag] }); }
+  saveUIState();
 }
 
 // ── Search ─────────────────────────────────────────────────
@@ -898,6 +1088,7 @@ var searchInput = document.getElementById('searchInput');
 var searchTimeout = null;
 searchInput.addEventListener('input', function() {
   searchQuery = this.value;
+  saveUIState();
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(function() {
     if (searchQuery.trim()) searchMemories(searchQuery);
@@ -926,7 +1117,56 @@ function stopPolling() {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
 }
 
+// ── State Persistence ──────────────────────────────────────
+var STORAGE_KEY = 'agent-memory-ui-state';
+
+function saveUIState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      typeFilter: currentTypeFilter,
+      tagFilter: currentTagFilter,
+      searchQuery: searchQuery,
+      activeTab: currentTab
+    }));
+  } catch(e) {}
+}
+
+function restoreUIState() {
+  try {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    var state = JSON.parse(saved);
+
+    // Restore type filter
+    if (state.typeFilter && state.typeFilter !== 'all') {
+      currentTypeFilter = state.typeFilter;
+      var typeBtns = document.querySelectorAll('.type-tab');
+      for (var i = 0; i < typeBtns.length; i++) {
+        if (typeBtns[i].dataset.type === state.typeFilter) typeBtns[i].classList.add('active');
+        else typeBtns[i].classList.remove('active');
+      }
+    }
+
+    // Restore tag filter
+    if (state.tagFilter) {
+      currentTagFilter = state.tagFilter;
+    }
+
+    // Restore search query
+    if (state.searchQuery) {
+      searchQuery = state.searchQuery;
+      document.getElementById('searchInput').value = state.searchQuery;
+    }
+
+    // Restore active tab
+    if (state.activeTab && state.activeTab !== 'memories') {
+      switchTab(state.activeTab);
+    }
+  } catch(e) {}
+}
+
 // ── Init ───────────────────────────────────────────────────
+restoreUIState();
 startPolling();
 </script>
 </body>
