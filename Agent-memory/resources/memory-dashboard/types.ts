@@ -21,9 +21,9 @@ export interface Activity {
 }
 
 export interface WidgetProps {
-  memories: Memory[];
+  memories?: Memory[];
   activities?: Activity[];
-  total: number;
+  total?: number;
   query?: string;
   action?: string;
   memory?: Memory;
