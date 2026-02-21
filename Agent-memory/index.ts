@@ -704,6 +704,11 @@ server.tool(
       const handoff = completeHandoff(db, params.handoff_id);
 
       if (!handoff) {
+        // Check if handoff exists with wrong status
+        const existing = db.prepare(`SELECT status FROM handoffs WHERE id = ?`).get(params.handoff_id) as { status: string } | undefined;
+        if (existing) {
+          return error(`Handoff #${params.handoff_id} cannot be completed (current status: ${existing.status}). It must be picked up first.`);
+        }
         return error(`Handoff #${params.handoff_id} not found.`);
       }
 
