@@ -1,13 +1,13 @@
 import Database from "better-sqlite3";
 import path from "path";
+import { existsSync, mkdirSync } from "fs";
 
 let fts5Available = false;
 
 export function initializeDatabase(dbPath: string): Database.Database {
   const dir = path.dirname(dbPath);
-  const fs = require("fs");
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
   }
 
   const db = new Database(dbPath);

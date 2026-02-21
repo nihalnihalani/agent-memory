@@ -1,14 +1,22 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 import type Database from "better-sqlite3";
 import { deleteMemory, logActivity } from "../db/queries.js";
+import { agentDisplayName } from "./helpers.js";
+
+const WIDGET_URI = "ui://agent-memory/dashboard.html";
 
 export function registerForgetTool(server: McpServer, db: Database.Database): void {
-  server.tool(
+  registerAppTool(
+    server,
     "forget",
-    "Remove a specific memory by its key. Use when information is outdated or user requests deletion.",
     {
-      key: z.string().describe("The key of the memory to delete"),
+      description: "Remove a specific memory by its key. Use when information is outdated or user requests deletion.",
+      inputSchema: {
+        key: z.string().describe("The key of the memory to delete"),
+      },
+      _meta: { ui: { resourceUri: WIDGET_URI } },
     },
     async (params, extra) => {
       try {
@@ -18,17 +26,38 @@ export function registerForgetTool(server: McpServer, db: Database.Database): vo
 
         const deleted = deleteMemory(db, params.key);
 
-        logActivity(db, {
-          agent_id: agentId,
-          action: "forget",
-          target_key: params.key,
-          detail: deleted ? `Deleted memory: ${params.key}` : `Memory not found: ${params.key}`,
-        });
-
         if (deleted) {
-          return { content: [{ type: "text", text: `Forgot memory: ${params.key}` }] };
+          const originalAgent = deleted.agent_id
+            ? agentDisplayName(deleted.agent_id)
+            : "Unknown";
+
+          logActivity(db, {
+            agent_id: agentId,
+            action: "forget",
+            target_key: params.key,
+            detail: `Deleted ${deleted.type} memory: ${params.key} (was stored by ${originalAgent})`,
+          });
+
+          return {
+            content: [{
+              type: "text",
+              text: `Forgotten: '${params.key}' (was a [${deleted.type}] stored by ${originalAgent})`,
+            }],
+          };
         } else {
-          return { content: [{ type: "text", text: `Memory not found: ${params.key}` }] };
+          logActivity(db, {
+            agent_id: agentId,
+            action: "forget",
+            target_key: params.key,
+            detail: `Memory not found: ${params.key}`,
+          });
+
+          return {
+            content: [{
+              type: "text",
+              text: `No memory found with key '${params.key}'`,
+            }],
+          };
         }
       } catch (err: any) {
         return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };

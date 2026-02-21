@@ -1,6 +1,8 @@
 node_modules/
 dist/
 data/memories.db
+data/memories.db-shm
+data/memories.db-wal
 *.js
 !resources/**/*.js
 .DS_Store

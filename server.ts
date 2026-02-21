@@ -1,9 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import express from "express";
 import cors from "cors";
 import { randomUUID } from "crypto";
 import path from "path";
+import { readFileSync } from "fs";
 
 import { initializeDatabase } from "./src/db/schema.js";
 import { seedDatabase } from "./src/db/seed.js";
@@ -18,6 +20,13 @@ const dbPath = path.join(process.cwd(), "data", "memories.db");
 const db = initializeDatabase(dbPath);
 seedDatabase(db);
 
+// Load widget HTML once at startup
+const widgetHtml = readFileSync(
+  path.join(process.cwd(), "resources", "memory-dashboard", "widget.html"),
+  "utf-8"
+);
+const DASHBOARD_URI = "ui://agent-memory/dashboard.html";
+
 function createMcpServer() {
   const server = new McpServer({
     name: "agent-memory",
@@ -29,6 +38,21 @@ function createMcpServer() {
   registerForgetTool(server, db);
   registerListTool(server, db);
   registerResources(server, db);
+
+  // Register the dashboard widget as an MCP App resource
+  registerAppResource(
+    server,
+    "Memory Dashboard",
+    DASHBOARD_URI,
+    { description: "Interactive agent memory dashboard" },
+    async () => ({
+      contents: [{
+        uri: DASHBOARD_URI,
+        mimeType: RESOURCE_MIME_TYPE,
+        text: widgetHtml,
+      }],
+    })
+  );
 
   return server;
 }
@@ -46,6 +70,7 @@ app.post("/mcp", async (req, res) => {
 
   if (sessionId && transports.has(sessionId)) {
     transport = transports.get(sessionId)!;
+    trackSession(sessionId);
   } else if (!sessionId) {
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
@@ -61,6 +86,7 @@ app.post("/mcp", async (req, res) => {
     // Session ID is assigned during handleRequest for init
     if (transport.sessionId) {
       transports.set(transport.sessionId, transport);
+      trackSession(transport.sessionId);
     }
     return;
   } else {
@@ -96,8 +122,51 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", memories: count });
 });
 
+// Session cleanup: remove stale sessions older than 30 minutes
+const SESSION_TTL_MS = 30 * 60 * 1000;
+const sessionLastSeen = new Map<string, number>();
+
+function trackSession(sessionId: string) {
+  sessionLastSeen.set(sessionId, Date.now());
+}
+
+const cleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, lastSeen] of sessionLastSeen) {
+    if (now - lastSeen > SESSION_TTL_MS) {
+      const transport = transports.get(sessionId);
+      if (transport) {
+        transport.close?.();
+        transports.delete(sessionId);
+      }
+      sessionLastSeen.delete(sessionId);
+    }
+  }
+}, 60 * 1000);
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Agent Memory MCP server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
 });
+
+// Graceful shutdown
+function shutdown(signal: string) {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  clearInterval(cleanupInterval);
+  for (const [sessionId, transport] of transports) {
+    transport.close?.();
+    transports.delete(sessionId);
+  }
+  sessionLastSeen.clear();
+  db.close();
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
+  // Force exit after 5 seconds if graceful close hangs
+  setTimeout(() => process.exit(1), 5000);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

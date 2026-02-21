@@ -8,7 +8,7 @@ import {
   getMostAccessedMemories,
   getRecentActivity,
   getStats,
-  getTagsForMemory,
+  getTagsForMemories,
   listMemories,
 } from "../db/queries.js";
 
@@ -60,6 +60,10 @@ export function registerResources(server: McpServer, db: Database.Database): voi
       const typeCounts = getMemoryCountsByType(db);
       const agents = getDistinctAgents(db);
 
+      // Bulk fetch tags for all memories in one query
+      const allMemories = [...decisions, ...preferences, ...tasks, ...snippets];
+      const tagsMap = getTagsForMemories(db, allMemories.map((m) => m.id));
+
       const sections: string[] = [];
 
       sections.push("=== CURRENT PROJECT CONTEXT ===");
@@ -79,7 +83,7 @@ export function registerResources(server: McpServer, db: Database.Database): voi
       if (decisions.length > 0) {
         sections.push("## Decisions");
         for (const d of decisions) {
-          const tags = getTagsForMemory(db, d.id);
+          const tags = tagsMap.get(d.id) || [];
           const lines = [`- **${d.key}**: ${d.value}`];
           if (d.context) lines.push(`  Rationale: ${d.context}`);
           if (d.agent_id) lines.push(`  Decided by: ${agentDisplayName(d.agent_id)} (${d.updated_at})`);
@@ -93,7 +97,7 @@ export function registerResources(server: McpServer, db: Database.Database): voi
       if (preferences.length > 0) {
         sections.push("## User Preferences");
         for (const p of preferences) {
-          const tags = getTagsForMemory(db, p.id);
+          const tags = tagsMap.get(p.id) || [];
           const tagStr = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
           sections.push(`- ${p.key}: ${p.value}${tagStr}`);
         }
@@ -104,7 +108,7 @@ export function registerResources(server: McpServer, db: Database.Database): voi
       if (tasks.length > 0) {
         sections.push("## Recent Tasks");
         for (const t of tasks) {
-          const tags = getTagsForMemory(db, t.id);
+          const tags = tagsMap.get(t.id) || [];
           const tagStr = tags.length > 0 ? ` [${tags.join(", ")}]` : "";
           const agentStr = t.agent_id ? ` (${agentDisplayName(t.agent_id)})` : "";
           sections.push(`- ${t.key}: ${t.value}${tagStr}${agentStr}`);

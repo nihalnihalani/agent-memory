@@ -46,6 +46,10 @@ export interface MemoryRow {
   access_count: number;
 }
 
+export interface SearchResultRow extends MemoryRow {
+  rank: number;
+}
+
 export interface ActivityRow {
   id: number;
   agent_id: string;
@@ -100,7 +104,7 @@ export function upsertMemory(db: Database.Database, params: UpsertMemoryParams):
       params.agent_id || null
     );
 
-    if (params.tags && params.tags.length > 0) {
+    if (params.tags !== undefined) {
       deleteTags.run(params.key);
       for (const tag of params.tags) {
         insertTag.run(params.key, tag);
@@ -113,7 +117,7 @@ export function upsertMemory(db: Database.Database, params: UpsertMemoryParams):
   return transaction();
 }
 
-export function searchMemories(db: Database.Database, params: SearchParams): MemoryRow[] {
+export function searchMemories(db: Database.Database, params: SearchParams): SearchResultRow[] {
   const limit = Math.min(Math.max(params.limit || 5, 1), 20);
 
   if (isFts5Available()) {
@@ -122,7 +126,7 @@ export function searchMemories(db: Database.Database, params: SearchParams): Mem
   return searchWithLike(db, params, limit);
 }
 
-function searchWithFts5(db: Database.Database, params: SearchParams, limit: number): MemoryRow[] {
+function searchWithFts5(db: Database.Database, params: SearchParams, limit: number): SearchResultRow[] {
   let sql = `
     SELECT m.*, bm25(memories_fts, 1.0, 2.0, 0.5) as rank
     FROM memories_fts fts
@@ -144,19 +148,20 @@ function searchWithFts5(db: Database.Database, params: SearchParams, limit: numb
   }
 
   sql += ` WHERE ${conditions.join(" AND ")}`;
+  // Fetch more than limit to allow composite re-ranking in application layer
   sql += ` ORDER BY rank LIMIT ?`;
-  bindings.push(limit);
+  bindings.push(limit * 3);
 
   try {
-    return db.prepare(sql).all(...bindings) as MemoryRow[];
+    return db.prepare(sql).all(...bindings) as SearchResultRow[];
   } catch {
     // If FTS query syntax fails, fall back to LIKE
     return searchWithLike(db, params, limit);
   }
 }
 
-function searchWithLike(db: Database.Database, params: SearchParams, limit: number): MemoryRow[] {
-  let sql = `SELECT * FROM memories m WHERE 1=1`;
+function searchWithLike(db: Database.Database, params: SearchParams, limit: number): SearchResultRow[] {
+  let sql = `SELECT *, 0.0 as rank FROM memories m WHERE 1=1`;
   const bindings: (string | number)[] = [];
 
   const likePattern = `%${params.query}%`;
@@ -176,12 +181,14 @@ function searchWithLike(db: Database.Database, params: SearchParams, limit: numb
   sql += ` ORDER BY m.updated_at DESC LIMIT ?`;
   bindings.push(limit);
 
-  return db.prepare(sql).all(...bindings) as MemoryRow[];
+  return db.prepare(sql).all(...bindings) as SearchResultRow[];
 }
 
-export function deleteMemory(db: Database.Database, key: string): boolean {
-  const result = db.prepare(`DELETE FROM memories WHERE key = ?`).run(key);
-  return result.changes > 0;
+export function deleteMemory(db: Database.Database, key: string): MemoryRow | null {
+  const memory = db.prepare(`SELECT * FROM memories WHERE key = ?`).get(key) as MemoryRow | undefined;
+  if (!memory) return null;
+  db.prepare(`DELETE FROM memories WHERE key = ?`).run(key);
+  return memory;
 }
 
 export function listMemories(db: Database.Database, params: ListParams): { memories: MemoryRow[]; total: number } {
@@ -233,10 +240,10 @@ export function getRecentActivity(db: Database.Database, limit: number = 20): Ac
   ).all(limit) as ActivityRow[];
 }
 
-export function getMemoriesByType(db: Database.Database, type: string): MemoryRow[] {
+export function getMemoriesByType(db: Database.Database, type: string, limit: number = 50): MemoryRow[] {
   return db.prepare(
-    `SELECT * FROM memories WHERE type = ? ORDER BY updated_at DESC`
-  ).all(type) as MemoryRow[];
+    `SELECT * FROM memories WHERE type = ? ORDER BY updated_at DESC LIMIT ?`
+  ).all(type, limit) as MemoryRow[];
 }
 
 export function incrementAccessCount(db: Database.Database, ids: number[]): void {
@@ -250,6 +257,22 @@ export function incrementAccessCount(db: Database.Database, ids: number[]): void
 export function getTagsForMemory(db: Database.Database, memoryId: number): string[] {
   const rows = db.prepare(`SELECT tag FROM tags WHERE memory_id = ?`).all(memoryId) as { tag: string }[];
   return rows.map((r) => r.tag);
+}
+
+export function getTagsForMemories(db: Database.Database, memoryIds: number[]): Map<number, string[]> {
+  const result = new Map<number, string[]>();
+  if (memoryIds.length === 0) return result;
+  const placeholders = memoryIds.map(() => "?").join(",");
+  const rows = db.prepare(
+    `SELECT memory_id, tag FROM tags WHERE memory_id IN (${placeholders}) ORDER BY memory_id`
+  ).all(...memoryIds) as { memory_id: number; tag: string }[];
+  for (const id of memoryIds) {
+    result.set(id, []);
+  }
+  for (const row of rows) {
+    result.get(row.memory_id)!.push(row.tag);
+  }
+  return result;
 }
 
 export function getStats(db: Database.Database): { totalMemories: number; uniqueAgents: number; totalActions: number } {
