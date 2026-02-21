@@ -4,7 +4,6 @@
 
 /**
  * Map raw clientInfo.name values to human-readable display names.
- * Mirrors the mapping in resource.ts for consistency.
  */
 const AGENT_DISPLAY_NAMES: Record<string, string> = {
   "claude-ai": "Claude (web)",
@@ -63,4 +62,13 @@ export function relativeTime(isoTimestamp: string): string {
 export function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.substring(0, maxLen) + "...";
+}
+
+/**
+ * Extract the agent ID from the MCP tool context.
+ */
+export function getAgentId(ctx: any): string {
+  return ctx?._meta?.clientInfo?.name
+    || ctx?.meta?.clientInfo?.name
+    || "unknown";
 }

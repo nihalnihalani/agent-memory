@@ -43,12 +43,40 @@ export function initializeDatabase(dbPath: string): Database.Database {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS handoffs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_agent TEXT NOT NULL,
+      to_agent TEXT,
+      status TEXT DEFAULT 'pending',
+      summary TEXT NOT NULL,
+      stuck_reason TEXT,
+      next_steps TEXT NOT NULL,
+      context_keys TEXT,
+      picked_up_by TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      picked_up_at TEXT,
+      completed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS memory_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      memory_id INTEGER REFERENCES memories(id) ON DELETE CASCADE,
+      old_value TEXT NOT NULL,
+      old_type TEXT,
+      old_context TEXT,
+      changed_by TEXT,
+      changed_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
     CREATE INDEX IF NOT EXISTS idx_memories_key ON memories(key);
     CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at);
     CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
     CREATE INDEX IF NOT EXISTS idx_activity_agent ON activity_log(agent_id);
     CREATE INDEX IF NOT EXISTS idx_activity_time ON activity_log(created_at);
+    CREATE INDEX IF NOT EXISTS idx_handoffs_status ON handoffs(status);
+    CREATE INDEX IF NOT EXISTS idx_handoffs_from ON handoffs(from_agent);
+    CREATE INDEX IF NOT EXISTS idx_memory_history_mid ON memory_history(memory_id);
   `);
 
   // Try to create FTS5 virtual table
