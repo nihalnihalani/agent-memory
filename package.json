@@ -1,42 +1,58 @@
 {
-  "name": "agent-memory",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
-  "scripts": {
-    "dev": "tsx server.ts",
-    "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/nihalnihalani/agent-memory.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "name": "Agent-memory",
   "type": "module",
-  "bugs": {
-    "url": "https://github.com/nihalnihalani/agent-memory/issues"
+  "version": "1.0.0",
+  "description": "MCP server: Agent-memory",
+  "author": "",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "server",
+    "starter",
+    "tools",
+    "resources",
+    "prompts",
+    "uiresource",
+    "ui",
+    "react",
+    "widgets",
+    "mcp-ui",
+    "apps-sdk"
+  ],
+  "main": "dist/index.js",
+  "scripts": {
+    "postinstall": "mcp-use generate-types || true",
+    "build": "mcp-use build",
+    "dev": "mcp-use dev",
+    "start": "mcp-use start",
+    "deploy": "mcp-use deploy"
   },
-  "homepage": "https://github.com/nihalnihalani/agent-memory#readme",
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.0.1",
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@openai/apps-sdk-ui": "^0.2.1",
+    "@tanstack/react-query": "^5.90.21",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "zod": "^4.3.6"
+    "mcp-use": "latest",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router": "^7.13.0",
+    "tailwindcss": "^4.2.0",
+    "zod": "4.3.5"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.0",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "overrides": {
+    "sugarss": "^5.0.1",
+    "lodash": "4.17.23"
   }
 }
