@@ -23,8 +23,8 @@
   "scripts": {
     "postinstall": "mcp-use generate-types || true",
     "build": "mcp-use build",
-    "dev": "mcp-use dev",
-    "start": "mcp-use start",
+    "dev": "mcp-use dev --port 3010",
+    "start": "mcp-use start --port 3010",
     "deploy": "mcp-use deploy"
   },
   "dependencies": {
