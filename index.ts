@@ -923,7 +923,7 @@ server.resourceTemplate(
   async (uri: URL, params: Record<string, string>) => {
     const memory = getMemoryByKey(db, params.key);
     if (!memory) {
-      return text(`No memory found with key '${params.key}'`);
+      return text(JSON.stringify({ error: "not_found", key: params.key }));
     }
     const tags = getTagsForMemory(db, memory.id);
     return text(JSON.stringify({ ...memory, tags }, null, 2));
