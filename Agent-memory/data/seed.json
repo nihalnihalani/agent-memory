@@ -1,0 +1,122 @@
+[
+  {
+    "key": "db-choice-sqlite",
+    "value": "Project uses SQLite with FTS5 for full-text search. Chosen for zero-config embedded deployment -- no separate database process needed. WAL mode enabled for concurrent reads.",
+    "type": "decision",
+    "context": "Evaluated PostgreSQL, MongoDB, and SQLite. SQLite won for hackathon velocity: single-file DB, built-in FTS5, works everywhere. Migration path to Cloudflare D1 later.",
+    "agent_id": "claude-code",
+    "tags": ["database", "architecture", "sqlite"]
+  },
+  {
+    "key": "frontend-framework-react",
+    "value": "Using React 19 with TypeScript for the widget UI. Tailwind CSS v4 for styling. mcp-use SDK provides the widget rendering infrastructure.",
+    "type": "decision",
+    "context": "mcp-use SDK uses React for widgets natively. No framework decision needed -- it was the obvious choice for widget components.",
+    "agent_id": "cursor-vscode",
+    "tags": ["frontend", "architecture", "react", "widget"]
+  },
+  {
+    "key": "api-style-mcp",
+    "value": "Using MCP (Model Context Protocol) as the API layer via mcp-use SDK. Tools expose remember/recall/forget/list-memories. Resources expose current-context and agent-activity.",
+    "type": "decision",
+    "context": "MCP is the standard protocol for AI agent tool use. Using mcp-use SDK for HTTP transport, widget support, and inspector UI. REST was considered but MCP provides richer agent integration.",
+    "agent_id": "claude-code",
+    "tags": ["api", "architecture", "mcp"]
+  },
+  {
+    "key": "auth-method-mcp-oauth",
+    "value": "MCP OAuth 2.1 via mcp-use built-in provider support. Supports Supabase, Auth0, and custom providers out of the box.",
+    "type": "decision",
+    "context": "mcp-use SDK has first-class OAuth support. No need for custom auth middleware -- just configure the provider in server config.",
+    "agent_id": "ChatGPT",
+    "tags": ["auth", "architecture", "oauth"]
+  },
+  {
+    "key": "deploy-target-cloudflare",
+    "value": "Primary target: mcp-use cloud deploy. Secondary: Cloudflare Workers with D1 for SQLite at the edge. Local dev via npx mcp-use dev.",
+    "type": "decision",
+    "context": "mcp-use deploy gives instant hosting. Cloudflare D1 is the natural SQLite-at-edge migration path for production scale.",
+    "agent_id": "gemini-cli-mcp-client",
+    "tags": ["deployment", "architecture", "cloudflare"]
+  },
+  {
+    "key": "user-prefers-dark-mode",
+    "value": "User strongly prefers dark mode in all applications. Default theme should always be dark. Use oklch color space for better contrast ratios.",
+    "type": "preference",
+    "context": "User mentioned this multiple times across sessions. Applies to all UI work including the memory dashboard widget.",
+    "agent_id": "ChatGPT",
+    "tags": ["ui", "preference", "theme"]
+  },
+  {
+    "key": "user-prefers-typescript-strict",
+    "value": "Always use TypeScript over JavaScript. Strict mode enabled. No any types allowed except in test files. Use zod for runtime validation.",
+    "type": "preference",
+    "context": "User is adamant about type safety. Every new file should be .ts or .tsx. The mcp-use SDK uses zod schemas natively.",
+    "agent_id": "claude-code",
+    "tags": ["language", "preference", "typescript"]
+  },
+  {
+    "key": "user-prefers-testing-vitest",
+    "value": "Use Vitest for all testing. In-memory SQLite for fast unit tests. No mocking unless absolutely necessary -- prefer real implementations.",
+    "type": "preference",
+    "context": "User prefers integration-style tests over unit tests with heavy mocking. SQLite makes this easy since the DB is in-memory.",
+    "agent_id": "gemini-cli-mcp-client",
+    "tags": ["testing", "preference", "vitest"]
+  },
+  {
+    "key": "task-implement-recall",
+    "value": "Implement recall tool with composite relevance scoring: BM25 (60%) + recency (20%) + access frequency (10%) + type priority (10%). Normalize BM25 scores before combining.",
+    "type": "task",
+    "context": "Pure BM25 ranking misses important context. Decisions should rank higher than notes. Recently updated memories are more relevant. Frequently accessed memories are probably important.",
+    "agent_id": "claude-code",
+    "tags": ["search", "task", "backend", "scoring"]
+  },
+  {
+    "key": "task-build-dashboard-widget",
+    "value": "Build memory dashboard widget showing: memory list with search/filter, activity feed with agent avatars, type distribution chart, and conflict detection UI.",
+    "type": "task",
+    "context": "The widget is the visual proof of multi-agent collaboration. Must show which agent stored what, when, and highlight cross-agent interactions.",
+    "agent_id": "cursor-vscode",
+    "tags": ["widget", "task", "frontend", "dashboard"]
+  },
+  {
+    "key": "task-seed-demo-data",
+    "value": "Create compelling seed data that tells a story of 4 agents (Claude Code, ChatGPT, Cursor, Gemini CLI) collaborating on a project. Show decisions, preferences, tasks, snippets, and cross-agent recall.",
+    "type": "task",
+    "context": "Demo data is critical for the hackathon presentation. Must demonstrate the cross-agent memory sharing narrative clearly.",
+    "agent_id": "ChatGPT",
+    "tags": ["demo", "task", "seed-data"]
+  },
+  {
+    "key": "snippet-mcp-tool-pattern",
+    "value": "server.tool(\n  {\n    name: \"tool-name\",\n    schema: z.object({ key: z.string() }),\n    widget: { name: \"widget-name\", invoking: \"Loading...\", invoked: \"Done\" },\n    annotations: { readOnlyHint: true },\n  },\n  async (params, ctx) => {\n    return widget({ props: { data }, output: text(\"Summary\") });\n  }\n);",
+    "type": "snippet",
+    "context": "Standard mcp-use tool registration pattern with widget response. The widget config at registration time controls the UI chrome, while widget() in the handler sends runtime data.",
+    "agent_id": "claude-code",
+    "tags": ["mcp-use", "snippet", "pattern"]
+  },
+  {
+    "key": "snippet-composite-scoring",
+    "value": "const score = (0.6 * normalizedBm25) + (0.2 * recencyScore) + (0.1 * accessScore) + (0.1 * typePriority);\n// recencyScore = 1.0 / (1.0 + ageDays * 0.1)\n// accessScore = log(1 + count) / log(1 + maxCount)\n// typePriority: decision=1.0, preference=0.9, task=0.8, snippet=0.7, note=0.5",
+    "type": "snippet",
+    "context": "Composite relevance scoring formula for the recall tool. Combines BM25 text relevance with recency, access frequency, and memory type priority.",
+    "agent_id": "ChatGPT",
+    "tags": ["search", "snippet", "scoring", "algorithm"]
+  },
+  {
+    "key": "note-fts5-bug-fix",
+    "value": "FTS5 MATCH operator crashes on special characters like *, \", (), {}. Added sanitizeFtsQuery() that strips these before passing to FTS5. Falls back to LIKE-based search if sanitized query is empty.",
+    "type": "note",
+    "context": "Discovered during testing when a query containing parentheses caused an unhandled SQLite error. The sanitization function is in queries.ts.",
+    "agent_id": "claude-code",
+    "tags": ["bug-fix", "note", "fts5", "sqlite"]
+  },
+  {
+    "key": "note-widget-progress",
+    "value": "Dashboard widget is 70% complete. Working: memory list, activity feed, search, type filters. TODO: conflict detection UI, agent avatar colors, responsive layout for narrow panels.",
+    "type": "note",
+    "context": "Progress update from the widget engineer. The widget uses mcp-use's useWidget() and useCallTool() hooks for real-time data.",
+    "agent_id": "cursor-vscode",
+    "tags": ["progress", "note", "widget", "dashboard"]
+  }
+]
