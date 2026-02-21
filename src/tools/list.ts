@@ -22,6 +22,8 @@ export function registerListTool(server: McpServer, db: Database.Database): void
           .describe("Max results (default: 10, max: 50)"),
         offset: z.number().optional()
           .describe("Skip N results for pagination"),
+        silent: z.boolean().optional()
+          .describe("When true, skip activity logging (used by widget polling)"),
       },
       _meta: { ui: { resourceUri: WIDGET_URI } },
     },
@@ -38,11 +40,13 @@ export function registerListTool(server: McpServer, db: Database.Database): void
           offset: params.offset,
         });
 
-        logActivity(db, {
-          agent_id: agentId,
-          action: "list_memories",
-          detail: `Listed memories (${memories.length}/${total})${params.type ? ` type=${params.type}` : ""}${params.tags ? ` tags=${params.tags.join(",")}` : ""}`,
-        });
+        if (!params.silent) {
+          logActivity(db, {
+            agent_id: agentId,
+            action: "list_memories",
+            detail: `Listed memories (${memories.length}/${total})${params.type ? ` type=${params.type}` : ""}${params.tags ? ` tags=${params.tags.join(",")}` : ""}`,
+          });
+        }
 
         // Fetch tags in bulk
         const tagsMap = getTagsForMemories(db, memories.map((m) => m.id));
@@ -88,17 +92,15 @@ export function registerListTool(server: McpServer, db: Database.Database): void
 
         const activities = getRecentActivity(db, 30);
 
-        const jsonData = JSON.stringify({
-          memories: memoriesWithTags,
-          activities,
-          total,
-        });
-
         return {
           content: [
             { type: "text", text: formattedText },
-            { type: "text", text: jsonData },
           ],
+          structuredContent: {
+            memories: memoriesWithTags,
+            activities,
+            total,
+          },
         };
       } catch (err: any) {
         return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };

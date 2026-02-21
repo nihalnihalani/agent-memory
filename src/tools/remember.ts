@@ -66,7 +66,10 @@ export function registerRememberTool(server: McpServer, db: Database.Database): 
             memory.context ? `Context: ${memory.context}` : null,
           ].filter(Boolean).join("\n");
 
-          return { content: [{ type: "text", text }] };
+          return {
+            content: [{ type: "text", text }],
+            structuredContent: { memory: { ...memory, tags }, action: "updated" },
+          };
         } else {
           // New memory
           logActivity(db, {
@@ -83,7 +86,10 @@ export function registerRememberTool(server: McpServer, db: Database.Database): 
             memory.context ? `Context: ${memory.context}` : null,
           ].filter(Boolean).join("\n");
 
-          return { content: [{ type: "text", text }] };
+          return {
+            content: [{ type: "text", text }],
+            structuredContent: { memory: { ...memory, tags }, action: "created" },
+          };
         }
       } catch (err: any) {
         return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };

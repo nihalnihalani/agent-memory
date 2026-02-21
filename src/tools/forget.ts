@@ -16,7 +16,7 @@ export function registerForgetTool(server: McpServer, db: Database.Database): vo
       inputSchema: {
         key: z.string().describe("The key of the memory to delete"),
       },
-      _meta: { ui: { resourceUri: WIDGET_URI } },
+      _meta: { ui: { resourceUri: WIDGET_URI, visibility: ["model", "app"] } },
     },
     async (params, extra) => {
       try {
@@ -39,10 +39,10 @@ export function registerForgetTool(server: McpServer, db: Database.Database): vo
           });
 
           return {
-            content: [{
-              type: "text",
-              text: `Forgotten: '${params.key}' (was a [${deleted.type}] stored by ${originalAgent})`,
-            }],
+            content: [
+              { type: "text", text: `Forgotten: '${params.key}' (was a [${deleted.type}] stored by ${originalAgent})` },
+            ],
+            structuredContent: { deleted: true, key: params.key },
           };
         } else {
           logActivity(db, {
@@ -53,10 +53,10 @@ export function registerForgetTool(server: McpServer, db: Database.Database): vo
           });
 
           return {
-            content: [{
-              type: "text",
-              text: `No memory found with key '${params.key}'`,
-            }],
+            content: [
+              { type: "text", text: `No memory found with key '${params.key}'` },
+            ],
+            structuredContent: { deleted: false, key: params.key },
           };
         }
       } catch (err: any) {

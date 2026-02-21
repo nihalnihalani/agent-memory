@@ -264,6 +264,23 @@
     transition: all 0.5s ease;
   }
 
+  /* ── Stats Cards ──────────────────────────────────────── */
+  .stat-card {
+    border-radius: 8px; padding: 12px; background: rgba(30,41,59,0.5);
+    border: 1px solid #334155;
+  }
+  .stat-card-title { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .stat-card-value { font-size: 24px; font-weight: 600; color: #e2e8f0; }
+  .stat-row { display: flex; gap: 8px; }
+  .stat-row > * { flex: 1; }
+  .type-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .type-bar-label { font-size: 11px; color: #94a3b8; width: 70px; text-transform: capitalize; }
+  .type-bar-track { flex: 1; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+  .type-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .type-bar-count { font-size: 11px; color: #64748b; width: 30px; text-align: right; }
+  .agent-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .agent-row-name { font-size: 11px; color: #e2e8f0; flex: 1; }
+
   /* ── Animations ────────────────────────────────────────── */
   @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -297,11 +314,16 @@
       <span class="font-semibold text-sm tracking-tight header-title-text">Agent Memory</span>
       <span class="live-dot" id="liveDot" title="Live - polling every 3s"></span>
     </div>
-    <div class="search-wrap">
-      <input id="searchInput" type="text" placeholder="Search memories..." class="search-input" />
-      <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
+    <div class="flex items-center gap-2">
+      <div class="search-wrap">
+        <input id="searchInput" type="text" placeholder="Search memories..." class="search-input" />
+        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <button onclick="toggleFullscreen()" title="Toggle fullscreen" style="padding:4px;color:#64748b;transition:color 0.15s;" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#64748b'">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+      </button>
     </div>
   </div>
 
@@ -309,6 +331,7 @@
   <div class="tabs-bar">
     <button class="tab-btn active" data-tab="memories" onclick="switchTab('memories')">Memories</button>
     <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">Activity</button>
+    <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">Stats</button>
   </div>
 
   <!-- Content Area -->
@@ -343,6 +366,11 @@
         <div class="loading-skeleton loading-skeleton-sm"></div>
         <div class="loading-skeleton loading-skeleton-sm"></div>
       </div>
+    </div>
+
+    <!-- Stats Tab -->
+    <div id="statsTab" class="flex-1 overflow-y-auto hidden">
+      <div id="statsContent" class="p-3" style="display:flex;flex-direction:column;gap:12px;"></div>
     </div>
   </div>
 
@@ -403,28 +431,26 @@ var ACTION_VERBS = {
 };
 
 // ── MCP Apps Communication Layer ───────────────────────────
-// Implements the JSON-RPC 2.0 postMessage protocol used by
-// @modelcontextprotocol/ext-apps App class.
-// Also supports simple type-based protocol for the test harness.
+// Implements the JSON-RPC 2.0 postMessage protocol per
+// @modelcontextprotocol/ext-apps specification.
 var pendingCalls = {};
 var rpcIdCounter = 0;
+var hostCapabilities = {};
+var hostContext = {};
+var isInitialized = false;
+var currentDisplayMode = 'inline';
+var initCallId = null;
 
 function callServerTool(name, args) {
   return new Promise(function(resolve, reject) {
     var id = ++rpcIdCounter;
     pendingCalls[id] = { resolve: resolve, reject: reject };
 
-    // ext-apps protocol: JSON-RPC 2.0
+    // ext-apps protocol: JSON-RPC 2.0 only
     window.parent.postMessage({
       jsonrpc: '2.0', id: id,
       method: 'tools/call',
       params: { name: name, arguments: args || {} }
-    }, '*');
-
-    // Simple protocol for test harness
-    window.parent.postMessage({
-      type: 'tool_call', id: 'call_' + id,
-      name: name, arguments: args || {}
     }, '*');
 
     setTimeout(function() {
@@ -437,18 +463,144 @@ function callServerTool(name, args) {
 }
 
 function connectToHost() {
+  initCallId = ++rpcIdCounter;
+  pendingCalls[initCallId] = {
+    resolve: function(result) {
+      hostCapabilities = (result && result.hostCapabilities) || (result && result.capabilities) || {};
+      hostContext = (result && result.hostContext) || (result && result.context) || {};
+      isInitialized = true;
+
+      // Send initialized notification (no id = notification)
+      window.parent.postMessage({
+        jsonrpc: '2.0',
+        method: 'ui/notifications/initialized',
+        params: {}
+      }, '*');
+
+      // Apply host styles (theme, CSS variables, etc.)
+      applyHostStyles(hostContext);
+    },
+    reject: function() { isInitialized = true; }
+  };
+
   window.parent.postMessage({
-    jsonrpc: '2.0', id: ++rpcIdCounter,
+    jsonrpc: '2.0', id: initCallId,
     method: 'ui/initialize',
-    params: { name: 'Agent Memory Dashboard', version: '1.0.0' }
+    params: {
+      protocolVersion: '2026-01-26',
+      clientInfo: { name: 'Agent Memory Dashboard', version: '1.0.0' },
+      appCapabilities: {
+        tools: { listChanged: false },
+        availableDisplayModes: ['inline', 'fullscreen']
+      }
+    }
   }, '*');
 }
 
+// ── Send model context updates ─────────────────────────────
+function updateModelContext() {
+  var visibleCount = memories.length;
+  var tagList = {};
+  memories.forEach(function(m) {
+    (m.tags || []).forEach(function(t) { tagList[t] = (tagList[t] || 0) + 1; });
+  });
+  var topTags = Object.keys(tagList).sort(function(a, b) { return tagList[b] - tagList[a]; }).slice(0, 10);
+
+  var summary = 'The user is viewing the Agent Memory dashboard. ';
+  if (currentTab === 'memories') {
+    summary += 'Showing ' + visibleCount + ' memories';
+    if (currentTypeFilter !== 'all') summary += ' filtered by type=' + currentTypeFilter;
+    summary += '.';
+    if (searchQuery) summary += ' Active search: "' + searchQuery + '"';
+    if (currentTagFilter) summary += ' Filtered by tag: ' + currentTagFilter;
+  } else {
+    summary += 'Viewing the activity log (' + (activities ? activities.length : 0) + ' entries).';
+  }
+
+  window.parent.postMessage({
+    jsonrpc: '2.0', id: ++rpcIdCounter,
+    method: 'ui/update-model-context',
+    params: {
+      content: [{ type: 'text', text: summary }],
+      structuredContent: {
+        activeTab: currentTab,
+        typeFilter: currentTypeFilter,
+        searchQuery: searchQuery || null,
+        tagFilter: currentTagFilter || null,
+        visibleMemories: visibleCount,
+        topTags: topTags
+      }
+    }
+  }, '*');
+}
+
+// ── Request display mode toggle ────────────────────────────
+function toggleFullscreen() {
+  var newMode = currentDisplayMode === 'inline' ? 'fullscreen' : 'inline';
+  window.parent.postMessage({
+    jsonrpc: '2.0', id: ++rpcIdCounter,
+    method: 'ui/request-display-mode',
+    params: { mode: newMode }
+  }, '*');
+  currentDisplayMode = newMode;
+}
+
+// ── Auto-resize notification ───────────────────────────────
+var resizeObserver = null;
+function setupAutoResize() {
+  if (typeof ResizeObserver === 'undefined') return;
+  resizeObserver = new ResizeObserver(function(entries) {
+    for (var i = 0; i < entries.length; i++) {
+      var rect = entries[i].contentRect;
+      window.parent.postMessage({
+        jsonrpc: '2.0',
+        method: 'ui/notifications/size-changed',
+        params: { width: Math.round(rect.width), height: Math.round(rect.height) }
+      }, '*');
+    }
+  });
+  resizeObserver.observe(document.body);
+}
+
+// ── Send chat message to model ─────────────────────────────
+function sendChatMessage(text) {
+  window.parent.postMessage({
+    jsonrpc: '2.0', id: ++rpcIdCounter,
+    method: 'ui/message',
+    params: { role: 'user', content: [{ type: 'text', text: text }] }
+  }, '*');
+}
+
+// ── Theme & Host Styles ────────────────────────────────────
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  if (theme === 'light') {
+    document.body.style.background = '#f8fafc';
+    document.body.style.color = '#1e293b';
+    document.documentElement.style.colorScheme = 'light';
+  } else {
+    document.documentElement.style.colorScheme = 'dark';
+  }
+}
+
+function applyHostStyles(ctx) {
+  if (!ctx) return;
+  if (ctx.theme) applyTheme(ctx.theme);
+  if (ctx.styles && ctx.styles.variables) {
+    var vars = ctx.styles.variables;
+    for (var key in vars) {
+      if (vars[key]) document.documentElement.style.setProperty(key, vars[key]);
+    }
+  }
+  if (ctx.displayMode) currentDisplayMode = ctx.displayMode;
+}
+
+// ── Message Handler ────────────────────────────────────────
 window.addEventListener('message', function(event) {
   var data = event.data;
   if (!data || typeof data !== 'object') return;
 
-  // JSON-RPC responses (ext-apps protocol)
+  // JSON-RPC responses (has id, is a response)
   if (data.jsonrpc === '2.0' && data.id != null && pendingCalls[data.id]) {
     var pending = pendingCalls[data.id];
     delete pendingCalls[data.id];
@@ -456,8 +608,10 @@ window.addEventListener('message', function(event) {
       pending.reject(new Error(data.error.message || 'RPC Error'));
     } else {
       var result = data.result;
-      if (result && result.content) {
-        // Try to find a JSON-parseable text block (prefer last one, which is the structured data)
+      // Prefer structuredContent (ext-apps spec), then JSON in text blocks, then raw
+      if (result && result.structuredContent) {
+        pending.resolve(result.structuredContent);
+      } else if (result && result.content) {
         var textBlocks = result.content.filter(function(c) { return c.type === 'text'; });
         var resolved = false;
         for (var bi = textBlocks.length - 1; bi >= 0; bi--) {
@@ -472,21 +626,16 @@ window.addEventListener('message', function(event) {
     return;
   }
 
-  // ext-apps notification: initial tool result
-  if (data.jsonrpc === '2.0' && data.method === 'tool/result') {
-    handleInitialToolResult(data.params);
+  // JSON-RPC requests from host (has id + method, e.g. teardown)
+  if (data.jsonrpc === '2.0' && data.method && data.id != null) {
+    handleHostRequest(data.id, data.method, data.params || {});
     return;
   }
 
-  // Simple protocol responses (test harness)
-  if (data.type === 'tool_result') {
-    var numId = parseInt(String(data.id || '').replace('call_', ''), 10);
-    if (pendingCalls[numId]) {
-      var p = pendingCalls[numId];
-      delete pendingCalls[numId];
-      if (data.error) { p.reject(new Error(data.error)); }
-      else { p.resolve(data.result); }
-    }
+  // JSON-RPC notifications from host (has method, no id)
+  if (data.jsonrpc === '2.0' && data.method) {
+    handleHostNotification(data.method, data.params || {});
+    return;
   }
 
   // Pushed state updates (test harness / custom)
@@ -503,20 +652,84 @@ window.addEventListener('message', function(event) {
   }
 });
 
-function handleInitialToolResult(result) {
-  if (!result) return;
-  var textBlocks = result.content ? result.content.filter(function(c) { return c.type === 'text'; }) : [];
-  for (var bi = textBlocks.length - 1; bi >= 0; bi--) {
-    try {
-      var parsed = JSON.parse(textBlocks[bi].text);
-      if (parsed.memories) { memories = parsed.memories; isLoading = false; renderMemories(); updateStats(); }
-      if (parsed.activities) { activities = parsed.activities; renderActivities(); updateStats(); }
+function handleHostRequest(id, method, params) {
+  switch (method) {
+    case 'ui/resource-teardown':
+      stopPolling();
+      if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
+      window.parent.postMessage({ jsonrpc: '2.0', id: id, result: {} }, '*');
       break;
-    } catch(e) {}
+    default:
+      // Unknown request - respond with empty result
+      window.parent.postMessage({ jsonrpc: '2.0', id: id, result: {} }, '*');
+      break;
   }
 }
 
+function handleHostNotification(method, params) {
+  switch (method) {
+    case 'ui/notifications/tool-result':
+      // Model called remember/recall/forget — immediately refresh
+      handleToolResultNotification(params);
+      break;
+    case 'ui/notifications/tool-input':
+      // Preview of what model is about to do (future use)
+      break;
+    case 'ui/notifications/host-context-changed':
+      // Theme, styles, or context change
+      applyHostStyles(params);
+      if (params) {
+        for (var k in params) hostContext[k] = params[k];
+      }
+      break;
+    case 'ui/resource-teardown':
+      // Teardown as notification (handled in handleHostRequest if it has an id)
+      stopPolling();
+      if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
+      break;
+    default:
+      break;
+  }
+}
+
+function handleToolResultNotification(params) {
+  if (!params) return;
+  // Try to parse structured data from the tool result
+  var content = params.content || [];
+  var textBlocks = content.filter(function(c) { return c.type === 'text'; });
+  for (var bi = textBlocks.length - 1; bi >= 0; bi--) {
+    try {
+      var parsed = JSON.parse(textBlocks[bi].text);
+      // If it's a memory result (from remember), refresh
+      if (parsed.memory) {
+        loadMemories({ type: currentTypeFilter });
+        return;
+      }
+      // If it's a delete result (from forget), refresh
+      if (parsed.deleted) {
+        loadMemories({ type: currentTypeFilter });
+        return;
+      }
+      // If it has memories array (from list/recall), use it directly
+      if (parsed.memories) {
+        var incoming = parsed.memories;
+        var newKeys = (prevMemoryCount >= 0) ? detectNewKeys(incoming) : [];
+        memories = incoming;
+        if (parsed.activities) { activities = parsed.activities; renderActivities(); }
+        isLoading = false;
+        renderMemories(newKeys.length > 0 ? newKeys : null);
+        updateStats(newKeys.length > 0);
+        snapshotState(memories);
+        return;
+      }
+    } catch(e) {}
+  }
+  // Fallback: just refresh
+  loadMemories({ type: currentTypeFilter });
+}
+
 connectToHost();
+setupAutoResize();
 
 // ── Data Fetching ──────────────────────────────────────────
 function buildKeySet(memList) {
@@ -540,7 +753,7 @@ function snapshotState(memList) {
 }
 
 function loadMemories(opts) {
-  var args = { limit: 50 };
+  var args = { limit: 50, silent: true };
   if (opts && opts.type && opts.type !== 'all') args.type = opts.type;
   if (opts && opts.tags) args.tags = opts.tags;
 
@@ -589,6 +802,8 @@ function deleteMemory(key) {
     memories = memories.filter(function(m) { return m.key !== key; });
     renderMemories();
     updateStats();
+    updateModelContext();
+    sendChatMessage('I deleted the memory "' + key + '" from the dashboard.');
   }).catch(function(err) { console.error('Delete failed:', err); });
 }
 
@@ -871,7 +1086,10 @@ function switchTab(tab) {
   }
   document.getElementById('memoriesTab').className = tab === 'memories' ? 'flex flex-col flex-1 overflow-hidden' : 'hidden';
   document.getElementById('activityTab').className = tab === 'activity' ? 'flex-1 overflow-y-auto' : 'hidden';
+  document.getElementById('statsTab').className = tab === 'stats' ? 'flex-1 overflow-y-auto' : 'hidden';
   if (tab === 'activity' && activities.length === 0) loadActivities();
+  if (tab === 'stats') loadStats();
+  updateModelContext();
 }
 
 // ── Type Filter ────────────────────────────────────────────
@@ -885,12 +1103,14 @@ function filterByType(type) {
   isLoading = true;
   renderMemories();
   loadMemories({ type: type });
+  updateModelContext();
 }
 
 // ── Tag Filter ─────────────────────────────────────────────
 function toggleTagFilter(tag) {
   if (currentTagFilter === tag) { currentTagFilter = null; loadMemories({ type: currentTypeFilter }); }
   else { currentTagFilter = tag; loadMemories({ type: currentTypeFilter, tags: [tag] }); }
+  updateModelContext();
 }
 
 // ── Search ─────────────────────────────────────────────────
@@ -902,6 +1122,7 @@ searchInput.addEventListener('input', function() {
   searchTimeout = setTimeout(function() {
     if (searchQuery.trim()) searchMemories(searchQuery);
     else loadMemories({ type: currentTypeFilter });
+    updateModelContext();
   }, 300);
 });
 searchInput.addEventListener('keydown', function(e) {
@@ -910,6 +1131,92 @@ searchInput.addEventListener('keydown', function(e) {
     if (searchQuery.trim()) searchMemories(searchQuery);
   }
 });
+
+// ── Stats ──────────────────────────────────────────────────
+function loadStats() {
+  callServerTool('get_stats', {}).then(function(result) {
+    if (result) renderStats(result);
+  }).catch(function(err) { console.error('Failed to load stats:', err); });
+}
+
+function renderStats(data) {
+  var container = document.getElementById('statsContent');
+  container.innerHTML = '';
+
+  // Summary row
+  var row = el('div', 'stat-row');
+  var items = [
+    { label: 'Memories', value: data.totalMemories || 0 },
+    { label: 'Agents', value: data.uniqueAgents || 0 },
+    { label: 'Actions', value: data.totalActions || 0 },
+  ];
+  items.forEach(function(item) {
+    var card = el('div', 'stat-card');
+    var title = el('div', 'stat-card-title'); title.textContent = item.label; card.appendChild(title);
+    var val = el('div', 'stat-card-value'); val.textContent = item.value; card.appendChild(val);
+    row.appendChild(card);
+  });
+  container.appendChild(row);
+
+  // Type breakdown
+  var counts = data.countsByType || {};
+  var maxCount = Math.max.apply(null, Object.values(counts).concat([1]));
+  if (Object.keys(counts).length > 0) {
+    var typeCard = el('div', 'stat-card');
+    var typeTitle = el('div', 'stat-card-title'); typeTitle.textContent = 'By Type'; typeCard.appendChild(typeTitle);
+    var types = ['decision', 'preference', 'task', 'snippet', 'note'];
+    types.forEach(function(type) {
+      var count = counts[type] || 0;
+      var wrap = el('div', 'type-bar-wrap');
+      var label = el('div', 'type-bar-label'); label.textContent = type; wrap.appendChild(label);
+      var track = el('div', 'type-bar-track');
+      var fill = el('div', 'type-bar-fill', {
+        width: (count / maxCount * 100) + '%',
+        backgroundColor: TYPE_COLORS[type] || '#6B7280'
+      });
+      track.appendChild(fill);
+      wrap.appendChild(track);
+      var countEl = el('div', 'type-bar-count'); countEl.textContent = count; wrap.appendChild(countEl);
+      typeCard.appendChild(wrap);
+    });
+    container.appendChild(typeCard);
+  }
+
+  // Top accessed
+  var topMem = data.topMemories || [];
+  if (topMem.length > 0) {
+    var topCard = el('div', 'stat-card');
+    var topTitle = el('div', 'stat-card-title'); topTitle.textContent = 'Most Accessed'; topCard.appendChild(topTitle);
+    topMem.forEach(function(m, i) {
+      var row = el('div', 'agent-row');
+      var badge = el('span', 'badge', {
+        backgroundColor: (TYPE_COLORS[m.type] || '#6B7280') + '22',
+        color: TYPE_COLORS[m.type] || '#6B7280'
+      });
+      badge.textContent = m.type;
+      row.appendChild(badge);
+      var name = el('span', 'agent-row-name'); name.textContent = m.key; row.appendChild(name);
+      var count = el('span', 'text-xs text-slate-400'); count.textContent = m.access_count + ' hits'; row.appendChild(count);
+      topCard.appendChild(row);
+    });
+    container.appendChild(topCard);
+  }
+
+  // Active agents
+  var agents = data.agents || [];
+  if (agents.length > 0) {
+    var agentCard = el('div', 'stat-card');
+    var agentTitle = el('div', 'stat-card-title'); agentTitle.textContent = 'Active Agents'; agentCard.appendChild(agentTitle);
+    agents.forEach(function(a) {
+      var row = el('div', 'agent-row');
+      var dot = el('span', 'agent-dot', { backgroundColor: getAgentColor(a.id) });
+      row.appendChild(dot);
+      var name = el('span', 'agent-row-name'); name.textContent = a.name; row.appendChild(name);
+      agentCard.appendChild(row);
+    });
+    container.appendChild(agentCard);
+  }
+}
 
 // ── Polling ────────────────────────────────────────────────
 function startPolling() {

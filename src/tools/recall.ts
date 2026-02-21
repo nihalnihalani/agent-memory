@@ -152,16 +152,14 @@ export function registerRecallTool(server: McpServer, db: Database.Database): vo
           tags: tagsMap.get(m.id) || [],
         }));
 
-        const jsonData = JSON.stringify({
-          memories: memoriesWithTags,
-          total: results.length,
-        });
-
         return {
           content: [
             { type: "text", text: formattedText },
-            { type: "text", text: jsonData },
           ],
+          structuredContent: {
+            memories: memoriesWithTags,
+            total: results.length,
+          },
         };
       } catch (err: any) {
         return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };

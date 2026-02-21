@@ -26,6 +26,7 @@
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    transition: width 0.3s ease, height 0.3s ease;
   }
   .widget-frame iframe {
     width: 100%;
@@ -171,26 +172,88 @@ function log(dir, msg) {
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ── Mock MCP Server ────────────────────────────────────────
+// ── Mock MCP Server (JSON-RPC 2.0 only) ───────────────────
 const widgetFrame = document.getElementById('widgetFrame');
 
 window.addEventListener('message', (event) => {
   const data = event.data;
   if (!data || typeof data !== 'object') return;
+  if (data.jsonrpc !== '2.0') return;
 
-  // Handle JSON-RPC protocol (ext-apps style)
-  if (data.jsonrpc === '2.0' && data.method) {
-    log('incoming', 'jsonrpc: ' + data.method + '(' + JSON.stringify(data.params || {}).substring(0, 80) + ')');
+  // Notifications from widget (no id means notification)
+  if (data.method && data.id == null) {
+    log('incoming', 'notification: ' + data.method);
+    if (data.method === 'ui/notifications/initialized') {
+      log('incoming', 'Widget initialized successfully');
+    }
+    if (data.method === 'ui/notifications/size-changed') {
+      log('incoming', 'Size changed: ' + JSON.stringify(data.params));
+    }
+    return;
+  }
+
+  // Requests from widget (has id)
+  if (data.method) {
+    log('incoming', data.method + '(' + JSON.stringify(data.params || {}).substring(0, 80) + ')');
 
     if (data.method === 'ui/initialize') {
-      // Respond to initialization
       setTimeout(() => {
         widgetFrame.contentWindow.postMessage({
           jsonrpc: '2.0', id: data.id,
-          result: { success: true }
+          result: {
+            protocolVersion: '2026-01-26',
+            hostInfo: { name: 'Test Harness', version: '1.0.0' },
+            hostCapabilities: {
+              serverTools: { listChanged: false },
+              openLinks: {},
+              logging: {}
+            },
+            hostContext: {
+              theme: 'dark',
+              displayMode: 'inline',
+              availableDisplayModes: ['inline', 'fullscreen'],
+              containerDimensions: { width: 620, height: 420 }
+            }
+          }
         }, '*');
-        log('outgoing', 'jsonrpc: ui/initialize response');
+        log('outgoing', 'ui/initialize response (spec-compliant)');
       }, 50);
+      return;
+    }
+
+    if (data.method === 'ui/update-model-context') {
+      var ctx = data.params.structuredContent || {};
+      var text = data.params.content ? data.params.content.map(c => c.text).join(' ') : '';
+      log('incoming', 'Model context: ' + text.substring(0, 100));
+      widgetFrame.contentWindow.postMessage({
+        jsonrpc: '2.0', id: data.id, result: {}
+      }, '*');
+      return;
+    }
+
+    if (data.method === 'ui/message') {
+      var msgText = data.params.content ? data.params.content.map(c => c.text).join(' ') : '';
+      log('incoming', 'Chat message from widget: ' + msgText);
+      widgetFrame.contentWindow.postMessage({
+        jsonrpc: '2.0', id: data.id, result: {}
+      }, '*');
+      return;
+    }
+
+    if (data.method === 'ui/request-display-mode') {
+      const mode = data.params.mode || 'inline';
+      const frame = document.querySelector('.widget-frame');
+      if (mode === 'fullscreen') {
+        frame.style.width = '100%';
+        frame.style.height = '80vh';
+      } else {
+        frame.style.width = '620px';
+        frame.style.height = '420px';
+      }
+      widgetFrame.contentWindow.postMessage({
+        jsonrpc: '2.0', id: data.id, result: { mode: mode }
+      }, '*');
+      log('outgoing', 'Display mode: ' + mode);
       return;
     }
 
@@ -202,45 +265,23 @@ window.addEventListener('message', (event) => {
         case 'recall': result = handleRecall(params.arguments || {}); break;
         case 'forget': result = handleForget(params.arguments || {}); break;
         case 'remember': result = handleRemember(params.arguments || {}); break;
+        case 'get_stats': result = handleGetStats(); break;
         default: result = { error: 'Unknown tool: ' + params.name };
       }
 
       setTimeout(() => {
         widgetFrame.contentWindow.postMessage({
           jsonrpc: '2.0', id: data.id,
-          result: { content: [{ type: 'text', text: JSON.stringify(result) }] }
+          result: {
+            content: [{ type: 'text', text: JSON.stringify(result) }],
+            structuredContent: result
+          }
         }, '*');
-        log('outgoing', 'jsonrpc: tools/call result (' + params.name + ')');
+        log('outgoing', 'tools/call result (' + params.name + ')');
       }, 100 + Math.random() * 200);
       return;
     }
-    return;
   }
-
-  // Handle simple protocol (fallback)
-  if (data.type !== 'tool_call') return;
-
-  log('incoming', 'tool_call: ' + data.name + '(' + JSON.stringify(data.arguments) + ')');
-
-  let result;
-  switch (data.name) {
-    case 'list_memories': result = handleListMemories(data.arguments); break;
-    case 'recall': result = handleRecall(data.arguments); break;
-    case 'forget': result = handleForget(data.arguments); break;
-    case 'remember': result = handleRemember(data.arguments); break;
-    default: result = { error: 'Unknown tool: ' + data.name };
-  }
-
-  // Simulate slight network delay
-  setTimeout(() => {
-    const response = {
-      type: 'tool_result',
-      id: data.id,
-      result: result
-    };
-    log('outgoing', 'tool_result: ' + JSON.stringify(result).substring(0, 100) + '...');
-    widgetFrame.contentWindow.postMessage(response, '*');
-  }, 100 + Math.random() * 200);
 });
 
 function handleListMemories(args) {
@@ -322,6 +363,27 @@ function handleRemember(args, agentOverride) {
   return { success: true, memory: mem };
 }
 
+function handleGetStats() {
+  const countsByType = {};
+  mockMemories.forEach(m => { countsByType[m.type] = (countsByType[m.type] || 0) + 1; });
+  const uniqueAgents = {};
+  mockMemories.forEach(m => { if (m.agent_id) uniqueAgents[m.agent_id] = true; });
+  const topMemories = [...mockMemories]
+    .filter(m => m.access_count > 0)
+    .sort((a, b) => b.access_count - a.access_count)
+    .slice(0, 5)
+    .map(m => ({ key: m.key, type: m.type, access_count: m.access_count }));
+
+  return {
+    totalMemories: mockMemories.length,
+    uniqueAgents: Object.keys(uniqueAgents).length,
+    totalActions: mockActivities.length,
+    countsByType,
+    topMemories,
+    agents: Object.keys(uniqueAgents).map(id => ({ id, name: id })),
+  };
+}
+
 // ── Test Controls ──────────────────────────────────────────
 function addMemory() {
   const agent = agents[addMemoryAgentIndex % agents.length];
@@ -337,14 +399,17 @@ function addBurst() {
     { key: 'burst-cursor-' + Date.now().toString(36), value: 'Cursor saved a code snippet for database migrations.', type: 'snippet', tags: ['burst', 'db'], agent: 'cursor-vscode' },
   ];
   burstItems.forEach(item => {
-    handleRemember({ key: item.key, value: item.value, type: item.type, tags: item.tags }, item.agent);
+    const result = handleRemember({ key: item.key, value: item.value, type: item.type, tags: item.tags }, item.agent);
+    widgetFrame.contentWindow.postMessage({
+      jsonrpc: '2.0',
+      method: 'ui/notifications/tool-result',
+      params: { content: [
+        { type: 'text', text: 'Stored memory: ' + item.key },
+        { type: 'text', text: JSON.stringify({ memory: result.memory, action: 'created' }) }
+      ] }
+    }, '*');
   });
-  widgetFrame.contentWindow.postMessage({
-    type: 'state_update',
-    memories: [...mockMemories].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
-    activities: [...mockActivities].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  }, '*');
-  log('outgoing', 'Burst: pushed 3 memories from 3 agents (' + mockMemories.length + ' total)');
+  log('outgoing', 'Burst: sent 3 tool-result notifications (' + mockMemories.length + ' total)');
 }
 
 function addDecision() {
@@ -387,23 +452,23 @@ function addSnippet() {
 }
 
 function sendRemember(key, value, type, tags, agentOverride) {
-  const data = {
-    type: 'tool_call',
-    id: 'test_' + Date.now(),
-    name: 'remember',
-    arguments: { key, value, type, tags }
-  };
-  // Simulate as if widget made the call, handle and push update
-  handleRemember(data.arguments, agentOverride);
+  const result = handleRemember({ key, value, type, tags }, agentOverride);
 
-  // Push state update to widget
+  // Send tool-result notification (simulating what a real host would do)
+  const jsonData = JSON.stringify({
+    memory: result.memory,
+    action: 'created',
+  });
   widgetFrame.contentWindow.postMessage({
-    type: 'state_update',
-    memories: [...mockMemories].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
-    activities: [...mockActivities].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    jsonrpc: '2.0',
+    method: 'ui/notifications/tool-result',
+    params: { content: [
+      { type: 'text', text: 'Stored memory: ' + key },
+      { type: 'text', text: jsonData }
+    ] }
   }, '*');
 
-  log('outgoing', 'state_update pushed (' + mockMemories.length + ' memories)');
+  log('outgoing', 'tool-result notification (' + mockMemories.length + ' memories)');
 }
 
 function switchAgent() {
@@ -436,11 +501,19 @@ function pushActivity() {
   };
   mockActivities.unshift(act);
 
+  // Send as tool-result notification for the activity
   widgetFrame.contentWindow.postMessage({
-    type: 'state_update',
-    activities: [...mockActivities]
+    jsonrpc: '2.0',
+    method: 'ui/notifications/tool-result',
+    params: { content: [
+      { type: 'text', text: JSON.stringify({
+        memories: [...mockMemories].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
+        activities: [...mockActivities].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        total: mockMemories.length
+      }) }
+    ] }
   }, '*');
-  log('outgoing', 'Pushed activity: ' + action);
+  log('outgoing', 'Pushed activity notification: ' + action);
 }
 </script>
 </body>

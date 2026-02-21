@@ -13,6 +13,7 @@ import { registerRememberTool } from "./src/tools/remember.js";
 import { registerRecallTool } from "./src/tools/recall.js";
 import { registerForgetTool } from "./src/tools/forget.js";
 import { registerListTool } from "./src/tools/list.js";
+import { registerStatsTool } from "./src/tools/stats.js";
 import { registerResources } from "./src/context/resource.js";
 
 // Initialize database
@@ -37,6 +38,7 @@ function createMcpServer() {
   registerRecallTool(server, db);
   registerForgetTool(server, db);
   registerListTool(server, db);
+  registerStatsTool(server, db);
   registerResources(server, db);
 
   // Register the dashboard widget as an MCP App resource
