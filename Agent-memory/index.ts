@@ -24,8 +24,15 @@ import {
   getStats,
   getDistinctAgents,
   getActivityByAgent,
+  createHandoff,
+  getPendingHandoffs,
+  getAllHandoffs,
+  pickupHandoff,
+  completeHandoff,
+  getMemoryHistory,
+  getRecentChanges,
 } from "./src/db/queries.js";
-import type { SearchResultRow } from "./src/db/queries.js";
+import type { SearchResultRow, HandoffRow } from "./src/db/queries.js";
 import { agentDisplayName, relativeTime, truncate, getAgentId } from "./src/tools/helpers.js";
 
 // --- Database initialization ---
@@ -485,6 +492,242 @@ server.tool(
 );
 
 // ========================
+// HANDOFF TOOLS
+// ========================
+
+// --- handoff ---
+server.tool(
+  {
+    name: "handoff",
+    description:
+      "Hand off your current task to the next agent. Use when you're stuck, done with your part, or a different agent would be better suited. The next agent that connects will see this handoff and can pick it up instantly without re-analyzing the project.",
+    schema: z.object({
+      summary: z.string().describe("What you were working on and what's been done so far"),
+      stuck_reason: z.string().optional().describe("Why you're handing off -- what blocked you, what you tried"),
+      next_steps: z.string().describe("Exactly what the next agent should do. Be specific."),
+      to_agent: z.string().optional().describe("Preferred next agent (e.g., 'codex', 'cursor', 'claude-code'). Leave empty for any agent."),
+      context_keys: z.array(z.string()).optional().describe("Keys of memories relevant to this handoff (the next agent should recall these)"),
+    }),
+    widget: {
+      name: "memory-dashboard",
+      invoking: "Creating handoff...",
+      invoked: "Handoff created",
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  async (params, ctx) => {
+    try {
+      const agentId = getAgentId(ctx);
+
+      const handoff = createHandoff(db, {
+        from_agent: agentId,
+        to_agent: params.to_agent,
+        summary: params.summary,
+        stuck_reason: params.stuck_reason,
+        next_steps: params.next_steps,
+        context_keys: params.context_keys,
+      });
+
+      logActivity(db, {
+        agent_id: agentId,
+        action: "handoff",
+        target_key: params.to_agent || "any",
+        detail: `Handed off: ${params.summary.substring(0, 100)}${params.stuck_reason ? ` (stuck: ${params.stuck_reason.substring(0, 60)})` : ""}`,
+      });
+
+      // Gather context memories if specified
+      let contextMemories: any[] = [];
+      if (params.context_keys && params.context_keys.length > 0) {
+        for (const key of params.context_keys) {
+          const mem = getMemoryByKey(db, key);
+          if (mem) {
+            const tags = getTagsForMemory(db, mem.id);
+            contextMemories.push({ ...mem, tags });
+          }
+        }
+      }
+
+      const textOutput = [
+        `Handoff #${handoff.id} created by ${agentDisplayName(agentId)}`,
+        ``,
+        `Summary: ${params.summary}`,
+        params.stuck_reason ? `Stuck because: ${params.stuck_reason}` : null,
+        `Next steps: ${params.next_steps}`,
+        params.to_agent ? `Preferred agent: ${agentDisplayName(params.to_agent)}` : `Open to any agent`,
+        contextMemories.length > 0 ? `Context: ${contextMemories.map(m => m.key).join(", ")}` : null,
+      ].filter(Boolean).join("\n");
+
+      return widget({
+        props: {
+          action: "handoff_created",
+          handoff: {
+            ...handoff,
+            context_keys: params.context_keys || [],
+          },
+          contextMemories,
+        },
+        output: text(textOutput),
+      });
+    } catch (err: any) {
+      return error(`Error: ${err.message}`);
+    }
+  }
+);
+
+// --- pickup ---
+server.tool(
+  {
+    name: "pickup",
+    description:
+      "Pick up a pending handoff from another agent. Call this when you're a new agent joining the project and want to continue where the previous agent left off. Returns the handoff details and relevant context.",
+    schema: z.object({
+      handoff_id: z.number().optional().describe("Specific handoff ID to pick up. If omitted, picks up the most recent pending handoff."),
+    }),
+    widget: {
+      name: "memory-dashboard",
+      invoking: "Picking up handoff...",
+      invoked: "Handoff accepted",
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  async (params, ctx) => {
+    try {
+      const agentId = getAgentId(ctx);
+
+      let handoff: any;
+      if (params.handoff_id) {
+        handoff = pickupHandoff(db, params.handoff_id, agentId);
+      } else {
+        const pending = getPendingHandoffs(db);
+        if (pending.length === 0) {
+          return widget({
+            props: { action: "no_handoffs" },
+            output: text("No pending handoffs. All caught up!"),
+          });
+        }
+        handoff = pickupHandoff(db, pending[0].id, agentId);
+      }
+
+      if (!handoff) {
+        return error("Handoff not found or already picked up by another agent.");
+      }
+
+      logActivity(db, {
+        agent_id: agentId,
+        action: "pickup",
+        target_key: `handoff-${handoff.id}`,
+        detail: `Picked up handoff from ${agentDisplayName(handoff.from_agent)}: ${handoff.summary.substring(0, 80)}`,
+      });
+
+      // Gather context memories
+      let contextMemories: any[] = [];
+      const contextKeys: string[] = handoff.context_keys ? JSON.parse(handoff.context_keys) : [];
+      for (const key of contextKeys) {
+        const mem = getMemoryByKey(db, key);
+        if (mem) {
+          const tags = getTagsForMemory(db, mem.id);
+          contextMemories.push({ ...mem, tags });
+          incrementAccessCount(db, [mem.id]);
+        }
+      }
+
+      // Get recent decisions and preferences for full context
+      const decisions = getMemoriesByType(db, "decision");
+      const preferences = getMemoriesByType(db, "preference");
+      const decisionTags = getTagsForMemories(db, decisions.map(d => d.id));
+      const prefTags = getTagsForMemories(db, preferences.map(p => p.id));
+
+      const textOutput = [
+        `=== HANDOFF BRIEFING ===`,
+        `From: ${agentDisplayName(handoff.from_agent)}`,
+        `To: ${agentDisplayName(agentId)} (you)`,
+        ``,
+        `## What was being worked on`,
+        handoff.summary,
+        ``,
+        handoff.stuck_reason ? `## Why they handed off\n${handoff.stuck_reason}\n` : "",
+        `## What you should do next`,
+        handoff.next_steps,
+        ``,
+        contextMemories.length > 0 ? `## Relevant context\n${contextMemories.map(m => `- [${m.type}] ${m.key}: ${truncate(m.value, 150)}`).join("\n")}` : "",
+        decisions.length > 0 ? `\n## Key decisions\n${decisions.map(d => `- ${d.key}: ${truncate(d.value, 100)}`).join("\n")}` : "",
+        preferences.length > 0 ? `\n## User preferences\n${preferences.map(p => `- ${p.key}: ${truncate(p.value, 100)}`).join("\n")}` : "",
+      ].filter(Boolean).join("\n");
+
+      return widget({
+        props: {
+          action: "handoff_picked_up",
+          handoff: {
+            ...handoff,
+            context_keys: contextKeys,
+          },
+          contextMemories,
+          decisions: decisions.map(d => ({ ...d, tags: decisionTags.get(d.id) || [] })),
+          preferences: preferences.map(p => ({ ...p, tags: prefTags.get(p.id) || [] })),
+        },
+        output: text(textOutput),
+      });
+    } catch (err: any) {
+      return error(`Error: ${err.message}`);
+    }
+  }
+);
+
+// --- complete-handoff ---
+server.tool(
+  {
+    name: "complete-handoff",
+    description: "Mark a handoff as completed after finishing the handed-off work.",
+    schema: z.object({
+      handoff_id: z.number().describe("The handoff ID to mark as completed"),
+      result: z.string().optional().describe("Summary of what was accomplished"),
+    }),
+    widget: {
+      name: "memory-dashboard",
+      invoking: "Completing handoff...",
+      invoked: "Handoff completed",
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  async (params, ctx) => {
+    try {
+      const agentId = getAgentId(ctx);
+      const handoff = completeHandoff(db, params.handoff_id);
+
+      if (!handoff) {
+        return error(`Handoff #${params.handoff_id} not found.`);
+      }
+
+      logActivity(db, {
+        agent_id: agentId,
+        action: "complete_handoff",
+        target_key: `handoff-${handoff.id}`,
+        detail: `Completed handoff from ${agentDisplayName(handoff.from_agent)}${params.result ? `: ${params.result.substring(0, 100)}` : ""}`,
+      });
+
+      return widget({
+        props: {
+          action: "handoff_completed",
+          handoff,
+        },
+        output: text(`Handoff #${handoff.id} completed by ${agentDisplayName(agentId)}. Originally from ${agentDisplayName(handoff.from_agent)}.${params.result ? `\nResult: ${params.result}` : ""}`),
+      });
+    } catch (err: any) {
+      return error(`Error: ${err.message}`);
+    }
+  }
+);
+
+// ========================
 // RESOURCES
 // ========================
 
@@ -507,6 +750,7 @@ server.resource(
     const stats = getStats(db);
     const typeCounts = getMemoryCountsByType(db);
     const agents = getDistinctAgents(db);
+    const pendingHandoffs = getPendingHandoffs(db);
 
     const allMemories = [...decisions, ...preferences, ...tasks, ...snippets];
     const tagsMap = getTagsForMemories(db, allMemories.map((m) => m.id));
@@ -572,6 +816,17 @@ server.resource(
       sections.push("## Most Referenced");
       for (const m of mostAccessed) {
         sections.push(`- ${m.key} (${m.type}, accessed ${m.access_count}x): ${m.value.length > 100 ? m.value.substring(0, 100) + "..." : m.value}`);
+      }
+      sections.push("");
+    }
+
+    if (pendingHandoffs.length > 0) {
+      sections.push("## PENDING HANDOFFS (Action Required!)");
+      sections.push("Another agent left work for you. Use `pickup` tool to accept.");
+      for (const h of pendingHandoffs) {
+        sections.push(`- Handoff #${h.id} from ${agentDisplayName(h.from_agent)}: ${h.summary}`);
+        if (h.stuck_reason) sections.push(`  Stuck: ${h.stuck_reason}`);
+        sections.push(`  Next steps: ${h.next_steps}`);
       }
       sections.push("");
     }
@@ -667,6 +922,104 @@ server.resourceTemplate(
     }
     const tags = getTagsForMemory(db, memory.id);
     return text(JSON.stringify({ ...memory, tags }, null, 2));
+  }
+);
+
+// --- memory://handoff-queue ---
+server.resource(
+  {
+    name: "handoff-queue",
+    uri: "memory://handoff-queue",
+    description:
+      "Pending handoffs from other agents. Read this when you first connect to see if another agent left work for you to pick up. This is how agents pass the baton in a relay.",
+    mimeType: "text/plain",
+  },
+  async () => {
+    const pending = getPendingHandoffs(db);
+    const all = getAllHandoffs(db, 10);
+
+    if (all.length === 0) {
+      return text("No handoffs yet. Use the `handoff` tool when you want another agent to continue your work.");
+    }
+
+    const lines: string[] = [];
+    lines.push("=== HANDOFF QUEUE ===");
+    lines.push("");
+
+    if (pending.length > 0) {
+      lines.push(`## Pending Handoffs (${pending.length})`);
+      lines.push("These are waiting for an agent to pick up. Use `pickup` tool to accept one.");
+      lines.push("");
+      for (const h of pending) {
+        const contextKeys = h.context_keys ? JSON.parse(h.context_keys) : [];
+        lines.push(`### Handoff #${h.id} from ${agentDisplayName(h.from_agent)}`);
+        lines.push(`Created: ${h.created_at}`);
+        if (h.to_agent) lines.push(`Preferred agent: ${agentDisplayName(h.to_agent)}`);
+        lines.push(`Summary: ${h.summary}`);
+        if (h.stuck_reason) lines.push(`Stuck because: ${h.stuck_reason}`);
+        lines.push(`Next steps: ${h.next_steps}`);
+        if (contextKeys.length > 0) lines.push(`Context keys: ${contextKeys.join(", ")}`);
+        lines.push("");
+      }
+    } else {
+      lines.push("No pending handoffs -- all caught up!");
+      lines.push("");
+    }
+
+    const completed = all.filter(h => h.status === "completed");
+    const inProgress = all.filter(h => h.status === "in_progress");
+
+    if (inProgress.length > 0) {
+      lines.push(`## In Progress (${inProgress.length})`);
+      for (const h of inProgress) {
+        lines.push(`- Handoff #${h.id}: ${agentDisplayName(h.from_agent)} → ${agentDisplayName(h.picked_up_by || "unknown")} | ${h.summary.substring(0, 80)}`);
+      }
+      lines.push("");
+    }
+
+    if (completed.length > 0) {
+      lines.push(`## Recently Completed (${completed.length})`);
+      for (const h of completed) {
+        lines.push(`- Handoff #${h.id}: ${agentDisplayName(h.from_agent)} → ${agentDisplayName(h.picked_up_by || "unknown")} | ${h.summary.substring(0, 80)}`);
+      }
+      lines.push("");
+    }
+
+    return markdown(lines.join("\n"));
+  }
+);
+
+// --- memory://changelog ---
+server.resource(
+  {
+    name: "changelog",
+    uri: "memory://changelog",
+    description:
+      "Memory change history: see how decisions and preferences evolved over time, who changed what, and the old vs new values.",
+    mimeType: "text/plain",
+  },
+  async () => {
+    const changes = getRecentChanges(db, 20);
+
+    if (changes.length === 0) {
+      return text("No memory changes recorded yet. History is tracked automatically when memories are updated.");
+    }
+
+    const lines: string[] = [];
+    lines.push("=== MEMORY CHANGELOG ===");
+    lines.push("");
+
+    for (const c of changes) {
+      lines.push(`**${c.key}** changed by ${agentDisplayName(c.changed_by || "unknown")} at ${c.changed_at}`);
+      lines.push(`  Old: ${truncate(c.old_value, 150)}`);
+      const current = getMemoryByKey(db, c.key);
+      if (current) {
+        lines.push(`  New: ${truncate(current.value, 150)}`);
+      }
+      lines.push("");
+    }
+
+    return markdown(lines.join("\n"));
   }
 );
 

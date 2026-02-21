@@ -116,8 +116,18 @@ export function upsertMemory(db: Database.Database, params: UpsertMemoryParams):
   const deleteTags = db.prepare(`DELETE FROM tags WHERE memory_id = (SELECT id FROM memories WHERE key = ?)`);
   const insertTag = db.prepare(`INSERT OR IGNORE INTO tags (memory_id, tag) VALUES ((SELECT id FROM memories WHERE key = ?), ?)`);
   const getMemory = db.prepare(`SELECT * FROM memories WHERE key = ?`);
+  const insertHistory = db.prepare(`
+    INSERT INTO memory_history (memory_id, old_value, old_type, old_context, changed_by)
+    VALUES (?, ?, ?, ?, ?)
+  `);
 
   const transaction = db.transaction(() => {
+    // Record history if updating an existing memory
+    const existing = getMemory.get(params.key) as MemoryRow | undefined;
+    if (existing && existing.value !== params.value) {
+      insertHistory.run(existing.id, existing.value, existing.type, existing.context, params.agent_id || null);
+    }
+
     upsert.run(
       params.key,
       params.value,
@@ -335,4 +345,119 @@ export function getActivityByAgent(db: Database.Database, agentId: string, limit
   return db.prepare(
     `SELECT * FROM activity_log WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`
   ).all(agentId, limit) as ActivityRow[];
+}
+
+// ========================
+// HANDOFFS
+// ========================
+
+export interface HandoffRow {
+  id: number;
+  from_agent: string;
+  to_agent: string | null;
+  status: string;
+  summary: string;
+  stuck_reason: string | null;
+  next_steps: string;
+  context_keys: string | null;
+  picked_up_by: string | null;
+  created_at: string;
+  picked_up_at: string | null;
+  completed_at: string | null;
+}
+
+interface CreateHandoffParams {
+  from_agent: string;
+  to_agent?: string;
+  summary: string;
+  stuck_reason?: string;
+  next_steps: string;
+  context_keys?: string[];
+}
+
+export function createHandoff(db: Database.Database, params: CreateHandoffParams): HandoffRow {
+  const stmt = db.prepare(`
+    INSERT INTO handoffs (from_agent, to_agent, summary, stuck_reason, next_steps, context_keys)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    params.from_agent,
+    params.to_agent || null,
+    params.summary,
+    params.stuck_reason || null,
+    params.next_steps,
+    params.context_keys ? JSON.stringify(params.context_keys) : null
+  );
+  return db.prepare(`SELECT * FROM handoffs ORDER BY id DESC LIMIT 1`).get() as HandoffRow;
+}
+
+export function getPendingHandoffs(db: Database.Database): HandoffRow[] {
+  return db.prepare(
+    `SELECT * FROM handoffs WHERE status = 'pending' ORDER BY created_at DESC`
+  ).all() as HandoffRow[];
+}
+
+export function getAllHandoffs(db: Database.Database, limit: number = 20): HandoffRow[] {
+  return db.prepare(
+    `SELECT * FROM handoffs ORDER BY created_at DESC LIMIT ?`
+  ).all(limit) as HandoffRow[];
+}
+
+export function pickupHandoff(db: Database.Database, handoffId: number, agentId: string): HandoffRow | null {
+  const handoff = db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow | undefined;
+  if (!handoff || handoff.status !== "pending") return null;
+
+  db.prepare(`
+    UPDATE handoffs SET status = 'in_progress', picked_up_by = ?, picked_up_at = datetime('now')
+    WHERE id = ?
+  `).run(agentId, handoffId);
+
+  return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
+}
+
+export function completeHandoff(db: Database.Database, handoffId: number): HandoffRow | null {
+  const handoff = db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow | undefined;
+  if (!handoff) return null;
+
+  db.prepare(`
+    UPDATE handoffs SET status = 'completed', completed_at = datetime('now')
+    WHERE id = ?
+  `).run(handoffId);
+
+  return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
+}
+
+// ========================
+// MEMORY HISTORY
+// ========================
+
+export interface MemoryHistoryRow {
+  id: number;
+  memory_id: number;
+  old_value: string;
+  old_type: string | null;
+  old_context: string | null;
+  changed_by: string | null;
+  changed_at: string;
+}
+
+export function recordMemoryHistory(db: Database.Database, memoryId: number, oldValue: string, oldType: string | null, oldContext: string | null, changedBy: string): void {
+  db.prepare(`
+    INSERT INTO memory_history (memory_id, old_value, old_type, old_context, changed_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(memoryId, oldValue, oldType, oldContext, changedBy);
+}
+
+export function getMemoryHistory(db: Database.Database, memoryId: number): MemoryHistoryRow[] {
+  return db.prepare(
+    `SELECT * FROM memory_history WHERE memory_id = ? ORDER BY changed_at DESC`
+  ).all(memoryId) as MemoryHistoryRow[];
+}
+
+export function getRecentChanges(db: Database.Database, limit: number = 10): (MemoryHistoryRow & { key: string })[] {
+  return db.prepare(`
+    SELECT mh.*, m.key FROM memory_history mh
+    JOIN memories m ON m.id = mh.memory_id
+    ORDER BY mh.changed_at DESC LIMIT ?
+  `).all(limit) as (MemoryHistoryRow & { key: string })[];
 }

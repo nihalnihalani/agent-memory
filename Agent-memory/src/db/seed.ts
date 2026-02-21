@@ -230,6 +230,39 @@ export function seedDatabase(db: Database.Database): void {
         `-${activity.minutes_ago} minutes`
       );
     }
+
+    // Seed a demo handoff -- Claude Code got stuck on CSS, hands off to Cursor
+    const insertHandoff = db.prepare(`
+      INSERT INTO handoffs (from_agent, to_agent, status, summary, stuck_reason, next_steps, context_keys, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', ?))
+    `);
+    insertHandoff.run(
+      "claude-code",
+      "cursor-vscode",
+      "pending",
+      "Implemented the recall tool with composite BM25 scoring and the full backend API. Frontend dashboard needs responsive layout fixes and dark mode polish.",
+      "CSS layout issues in the memory card grid -- cards overflow on narrow panels and the shimmer loading animation stutters. Frontend isn't my strength.",
+      "1. Fix the memory card grid to be responsive (single column under 400px)\n2. Add hover micro-interactions to the type filter pills\n3. Test the dark mode colors in the actual mcp-use inspector panel\n4. Add a subtle entrance animation for new memories",
+      JSON.stringify(["task-build-dashboard-widget", "user-prefers-dark-mode", "frontend-framework-react"]),
+      "-25 minutes"
+    );
+
+    // Seed a completed handoff for demo storytelling
+    insertHandoff.run(
+      "ChatGPT",
+      null,
+      "completed",
+      "Researched OAuth providers and wrote the auth decision document. Need someone to implement the actual OAuth flow.",
+      null,
+      "Implement MCP OAuth 2.1 using mcp-use built-in provider support. See the auth-method-mcp-oauth decision memory for details.",
+      JSON.stringify(["auth-method-mcp-oauth", "deploy-target-cloudflare"]),
+      "-90 minutes"
+    );
+    // Mark it as picked up and completed by gemini-cli
+    db.prepare(`
+      UPDATE handoffs SET picked_up_by = 'gemini-cli-mcp-client', picked_up_at = datetime('now', '-60 minutes'), completed_at = datetime('now', '-40 minutes')
+      WHERE status = 'completed' AND from_agent = 'ChatGPT'
+    `).run();
   });
 
   transaction();
