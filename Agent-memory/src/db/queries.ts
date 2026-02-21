@@ -63,6 +63,9 @@ export interface ActivityRow {
 }
 
 function validateInput(key: string, value: string): void {
+  if (!key || key.trim().length === 0) {
+    throw new Error("Key must not be empty");
+  }
   if (key.length > MAX_KEY_LENGTH) {
     throw new Error(`Key must be ${MAX_KEY_LENGTH} characters or less`);
   }
