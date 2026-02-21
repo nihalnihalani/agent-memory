@@ -1,7 +1,7 @@
 import React from "react";
 import { McpUseProvider, useWidget, type WidgetMetadata } from "mcp-use/react";
 import { z } from "zod";
-import type { Memory } from "./types";
+import type { Memory, Activity, WidgetProps } from "./types";
 import MemoryCard from "./components/MemoryCard";
 import SearchBar from "./components/SearchBar";
 import TypeFilter from "./components/TypeFilter";
@@ -174,9 +174,10 @@ function MemoryDashboardInner() {
     );
   }
 
-  const memories = props?.memories || [];
-  const activities = props?.activities || [];
-  const total = props?.total ?? memories.length;
+  const p = props as unknown as WidgetProps;
+  const memories: Memory[] = p?.memories || [];
+  const activities: Activity[] = p?.activities || [];
+  const total = p?.total ?? memories.length;
 
   // Filter by type client-side when typeFilter is set
   const filteredMemories = typeFilter

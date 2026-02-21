@@ -660,10 +660,10 @@ server.resourceTemplate(
     name: "Memory by Key",
     mimeType: "application/json",
   },
-  async ({ key }: { key: string }) => {
-    const memory = getMemoryByKey(db, key);
+  async (uri: URL, params: Record<string, string>) => {
+    const memory = getMemoryByKey(db, params.key);
     if (!memory) {
-      return text(`No memory found with key '${key}'`);
+      return text(`No memory found with key '${params.key}'`);
     }
     const tags = getTagsForMemory(db, memory.id);
     return text(JSON.stringify({ ...memory, tags }, null, 2));
