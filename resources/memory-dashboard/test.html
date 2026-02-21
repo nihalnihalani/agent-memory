@@ -84,6 +84,7 @@
 
 <div class="controls">
   <button onclick="addMemory()">+ Add Memory</button>
+  <button onclick="addBurst()" style="background:#1e293b;border-color:#8B5CF6;">Burst +3</button>
   <button onclick="addDecision()">+ Add Decision</button>
   <button onclick="addPreference()">+ Add Preference</button>
   <button onclick="addTask()">+ Add Task</button>
@@ -153,9 +154,10 @@ let mockActivities = [
   { id: 8, agent_id: 'chatgpt', action: 'list_memories', target_key: null, detail: 'Browsed all memories to build context for new conversation', created_at: '2026-02-21T12:30:00Z' },
 ];
 
-let currentMockAgent = 'claude-desktop';
-const agents = ['claude-desktop', 'chatgpt', 'cursor', 'vscode'];
+let currentMockAgent = 'claude-ai';
+const agents = ['claude-ai', 'chatgpt', 'cursor-vscode'];
 let agentIndex = 0;
+let addMemoryAgentIndex = 0;
 let nextId = 20;
 
 // ── Logging ────────────────────────────────────────────────
@@ -294,11 +296,12 @@ function handleForget(args) {
   return { success: true, message: 'Deleted memory: ' + args.key };
 }
 
-function handleRemember(args) {
+function handleRemember(args, agentOverride) {
+  const agentId = agentOverride || currentMockAgent;
   const existing = mockMemories.findIndex(m => m.key === args.key);
   const mem = {
     id: nextId++, key: args.key, value: args.value,
-    type: args.type || 'note', agent_id: currentMockAgent,
+    type: args.type || 'note', agent_id: agentId,
     context: args.context || '', tags: args.tags || [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(), access_count: 0
@@ -311,7 +314,7 @@ function handleRemember(args) {
   }
 
   mockActivities.unshift({
-    id: nextId++, agent_id: currentMockAgent, action: 'remember',
+    id: nextId++, agent_id: agentId, action: 'remember',
     target_key: args.key, detail: 'Stored: ' + args.value.substring(0, 60),
     created_at: new Date().toISOString()
   });
@@ -321,8 +324,27 @@ function handleRemember(args) {
 
 // ── Test Controls ──────────────────────────────────────────
 function addMemory() {
+  const agent = agents[addMemoryAgentIndex % agents.length];
+  addMemoryAgentIndex++;
   const key = 'note-' + Date.now().toString(36);
-  sendRemember(key, 'This is a test note created at ' + new Date().toLocaleTimeString(), 'note', ['test']);
+  sendRemember(key, 'This is a test note created at ' + new Date().toLocaleTimeString() + ' by ' + agent, 'note', ['test'], agent);
+}
+
+function addBurst() {
+  const burstItems = [
+    { key: 'burst-claude-' + Date.now().toString(36), value: 'Claude remembered a coding pattern for error handling.', type: 'decision', tags: ['burst', 'patterns'], agent: 'claude-ai' },
+    { key: 'burst-gpt-' + Date.now().toString(36), value: 'ChatGPT stored user preference for concise responses.', type: 'preference', tags: ['burst', 'prefs'], agent: 'chatgpt' },
+    { key: 'burst-cursor-' + Date.now().toString(36), value: 'Cursor saved a code snippet for database migrations.', type: 'snippet', tags: ['burst', 'db'], agent: 'cursor-vscode' },
+  ];
+  burstItems.forEach(item => {
+    handleRemember({ key: item.key, value: item.value, type: item.type, tags: item.tags }, item.agent);
+  });
+  widgetFrame.contentWindow.postMessage({
+    type: 'state_update',
+    memories: [...mockMemories].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
+    activities: [...mockActivities].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }, '*');
+  log('outgoing', 'Burst: pushed 3 memories from 3 agents (' + mockMemories.length + ' total)');
 }
 
 function addDecision() {
@@ -364,7 +386,7 @@ function addSnippet() {
   sendRemember(s.key, s.value, 'snippet', s.tags);
 }
 
-function sendRemember(key, value, type, tags) {
+function sendRemember(key, value, type, tags, agentOverride) {
   const data = {
     type: 'tool_call',
     id: 'test_' + Date.now(),
@@ -372,7 +394,7 @@ function sendRemember(key, value, type, tags) {
     arguments: { key, value, type, tags }
   };
   // Simulate as if widget made the call, handle and push update
-  handleRemember(data.arguments);
+  handleRemember(data.arguments, agentOverride);
 
   // Push state update to widget
   widgetFrame.contentWindow.postMessage({
