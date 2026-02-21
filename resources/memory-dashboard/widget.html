@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Memory Dashboard</title>
+<style>
+  /* ── Reset & Base ──────────────────────────────────────── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; overflow: hidden;
+    font-size: 14px; line-height: 1.5;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input { font-family: inherit; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+  /* ── Layout helpers ────────────────────────────────────── */
+  .app-root { width: 100%; height: 100vh; display: flex; flex-direction: column; max-height: 100vh; }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .flex-1 { flex: 1 1 0%; min-height: 0; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .justify-center { justify-content: center; }
+  .flex-wrap { flex-wrap: wrap; }
+  .gap-1 { gap: 4px; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .relative { position: relative; }
+  .absolute { position: absolute; }
+  .hidden { display: none !important; }
+  .overflow-hidden { overflow: hidden; }
+  .overflow-y-auto { overflow-y: auto; }
+  .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Spacing ───────────────────────────────────────────── */
+  .px-3 { padding-left: 12px; padding-right: 12px; }
+  .px-4 { padding-left: 16px; padding-right: 16px; }
+  .py-1 { padding-top: 4px; padding-bottom: 4px; }
+  .py-2 { padding-top: 8px; padding-bottom: 8px; }
+  .py-2\.5 { padding-top: 10px; padding-bottom: 10px; }
+  .p-3 { padding: 12px; }
+  .mb-1\.5 { margin-bottom: 6px; }
+  .mt-0\.5 { margin-top: 2px; }
+  .ml-auto { margin-left: auto; }
+
+  /* ── Typography ────────────────────────────────────────── */
+  .text-lg { font-size: 18px; }
+  .text-sm { font-size: 13px; }
+  .text-xs { font-size: 11px; }
+  .text-3xl { font-size: 30px; }
+  .font-semibold { font-weight: 600; }
+  .font-medium { font-weight: 500; }
+  .font-mono { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; }
+  .tracking-tight { letter-spacing: -0.025em; }
+  .leading-relaxed { line-height: 1.625; }
+  .opacity-50 { opacity: 0.5; }
+
+  /* ── Colors ────────────────────────────────────────────── */
+  .text-slate-200 { color: #e2e8f0; }
+  .text-slate-300 { color: #cbd5e1; }
+  .text-slate-400 { color: #94a3b8; }
+  .text-slate-500 { color: #64748b; }
+  .text-slate-600 { color: #475569; }
+  .bg-surface-900 { background: #0f172a; }
+
+  /* ── Borders ───────────────────────────────────────────── */
+  .border-b { border-bottom: 1px solid #334155; }
+  .border-t { border-top: 1px solid #334155; }
+  .rounded-lg { border-radius: 8px; }
+  .rounded-md { border-radius: 6px; }
+
+  /* ── Header ────────────────────────────────────────────── */
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #334155; background: #0f172a; }
+  .header-title { display: flex; align-items: center; gap: 8px; }
+
+  /* ── Search ────────────────────────────────────────────── */
+  .search-wrap { position: relative; }
+  .search-input {
+    background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+    font-size: 11px; padding: 6px 30px 6px 12px; border-radius: 8px; width: 192px;
+    transition: border-color 0.2s ease;
+  }
+  .search-input::placeholder { color: #64748b; }
+  .search-input:focus { outline: none; border-color: #8B5CF6; }
+  .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #64748b; }
+
+  /* ── Tabs ───────────────────────────────────────────────── */
+  .tabs-bar { display: flex; border-bottom: 1px solid #334155; background: #0f172a; }
+  .tab-btn {
+    padding: 8px 16px; font-size: 11px; font-weight: 500; color: #94a3b8;
+    border-bottom: 2px solid transparent; transition: all 0.2s ease;
+  }
+  .tab-btn.active { color: #e2e8f0; border-bottom-color: #8B5CF6; }
+  .tab-btn:hover:not(.active) { color: #94a3b8; }
+
+  /* ── Type Filter ───────────────────────────────────────── */
+  .type-filter { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid #334155; background: rgba(15,23,42,0.5); }
+  .type-tab {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px; color: #94a3b8;
+    transition: all 0.15s ease;
+  }
+  .type-tab.active { background: #334155; color: #e2e8f0; }
+  .type-tab:hover:not(.active) { background: #1e293b; }
+
+  /* ── Memory Card ───────────────────────────────────────── */
+  .memory-list { padding: 8px 12px; }
+  .memory-list > * + * { margin-top: 8px; }
+  .memory-card {
+    border-radius: 8px; padding: 12px; background: rgba(30,41,59,0.5);
+    border: 1px solid #334155; transition: all 0.2s ease;
+  }
+  .memory-card:hover {
+    border-color: #64748b; background: #1e293b;
+    transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .card-key { font-weight: 600; font-size: 11px; color: #e2e8f0; flex: 1 1 0%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-value { font-size: 11px; color: #94a3b8; margin-bottom: 6px; line-height: 1.625; }
+  .card-bottom { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Agent Dot ─────────────────────────────────────────── */
+  .agent-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  /* ── Badge ─────────────────────────────────────────────── */
+  .badge {
+    font-size: 10px; padding: 1px 6px; border-radius: 9999px;
+    font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+    display: inline-block;
+  }
+
+  /* ── Tag Pill ──────────────────────────────────────────── */
+  .tag-pill {
+    font-size: 11px; padding: 1px 8px; border-radius: 9999px;
+    background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .tag-pill:hover { border-color: #8B5CF6; color: #c4b5fd; }
+  .tag-pill.active { background: #8B5CF6; border-color: #8B5CF6; color: white; }
+
+  /* ── Delete Button ─────────────────────────────────────── */
+  .delete-btn { opacity: 0; transition: opacity 0.15s ease; color: #475569; padding: 2px; }
+  .delete-btn:hover { color: #f87171; }
+  .memory-card:hover .delete-btn { opacity: 1; }
+  .delete-btn svg { width: 14px; height: 14px; }
+
+  /* ── Activity ──────────────────────────────────────────── */
+  .activity-list { padding: 8px 12px; }
+  .activity-list > * + * { margin-top: 12px; }
+  .activity-item { border-left: 2px solid #334155; padding-left: 12px; position: relative; padding-top: 4px; padding-bottom: 4px; }
+  .activity-item::before {
+    content: ''; position: absolute; left: -5px; top: 10px;
+    width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+  }
+  .activity-header { display: flex; align-items: center; gap: 8px; }
+  .activity-detail { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  /* ── Stats Bar ─────────────────────────────────────────── */
+  .stats-bar {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: 8px 16px; border-top: 1px solid #334155; background: #0f172a;
+    font-size: 11px; color: #64748b;
+  }
+
+  /* ── Loading ───────────────────────────────────────────── */
+  .loading-skeleton {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px;
+    height: 64px; width: 100%;
+  }
+  .loading-skeleton + .loading-skeleton { margin-top: 8px; }
+  .loading-skeleton-sm { height: 48px; }
+
+  /* ── Empty State ───────────────────────────────────────── */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 200px; gap: 8px; color: #64748b;
+  }
+
+  /* ── Animations ────────────────────────────────────────── */
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+  .slide-in { animation: slideIn 0.4s ease-out; }
+</style>
+</head>
+<body>
+<div class="app-root">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">
+      <span class="text-lg">&#129504;</span>
+      <span class="font-semibold text-sm tracking-tight">Agent Memory</span>
+    </div>
+    <div class="search-wrap">
+      <input id="searchInput" type="text" placeholder="Search memories..." class="search-input" />
+      <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-bar">
+    <button class="tab-btn active" data-tab="memories" onclick="switchTab('memories')">Memories</button>
+    <button class="tab-btn" data-tab="activity" onclick="switchTab('activity')">Activity</button>
+  </div>
+
+  <!-- Content Area -->
+  <div class="flex flex-col flex-1 overflow-hidden">
+
+    <!-- Memories Tab -->
+    <div id="memoriesTab" class="flex flex-col flex-1 overflow-hidden">
+      <!-- Type Filter -->
+      <div class="type-filter">
+        <button class="type-tab active" data-type="all" onclick="filterByType('all')">All</button>
+        <button class="type-tab" data-type="decision" onclick="filterByType('decision')">Decisions</button>
+        <button class="type-tab" data-type="task" onclick="filterByType('task')">Tasks</button>
+        <button class="type-tab" data-type="preference" onclick="filterByType('preference')">Prefs</button>
+        <button class="type-tab" data-type="snippet" onclick="filterByType('snippet')">Snippets</button>
+        <button class="type-tab" data-type="note" onclick="filterByType('note')">Notes</button>
+      </div>
+
+      <!-- Memory List -->
+      <div id="memoryList" class="flex-1 overflow-y-auto memory-list">
+        <div id="loadingState">
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Tab -->
+    <div id="activityTab" class="flex-1 overflow-y-auto hidden">
+      <div id="activityList" class="activity-list"></div>
+      <div id="activityLoading" class="activity-list">
+        <div class="loading-skeleton loading-skeleton-sm"></div>
+        <div class="loading-skeleton loading-skeleton-sm"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Stats -->
+  <div class="stats-bar">
+    <span id="statMemories">0 memories</span>
+    <span>&#183;</span>
+    <span id="statAgents">0 agents</span>
+    <span>&#183;</span>
+    <span id="statActions">0 actions</span>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+var memories = [];
+var activities = [];
+var currentTab = 'memories';
+var currentTypeFilter = 'all';
+var currentTagFilter = null;
+var searchQuery = '';
+var isLoading = true;
+
+// ── Agent Colors ───────────────────────────────────────────
+// Based on real clientInfo.name values from Apify MCP Client Capabilities Index
+var AGENT_COLORS = {
+  'claude': '#8B5CF6', 'claude-ai': '#8B5CF6', 'claude-desktop': '#8B5CF6', 'claude-code': '#8B5CF6',
+  'chatgpt': '#10B981', 'openai': '#10B981', 'codex': '#10B981',
+  'cursor': '#3B82F6', 'cursor-vscode': '#3B82F6',
+  'visual studio code': '#6B7280', 'vscode': '#6B7280', 'copilot': '#6B7280', 'github-copilot': '#6B7280',
+  'cline': '#06B6D4', 'roo-code': '#06B6D4', 'kilo-code': '#06B6D4',
+  'gemini': '#F59E0B', 'goose': '#F97316', 'jetbrains': '#EF4444', 'q-dev': '#D97706',
+};
+var DEFAULT_AGENT_COLOR = '#374151';
+
+var AGENT_NAMES = {
+  'claude': 'Claude', 'claude-ai': 'Claude', 'claude-desktop': 'Claude', 'claude-code': 'Claude Code',
+  'chatgpt': 'ChatGPT', 'openai': 'ChatGPT', 'codex': 'Codex',
+  'cursor': 'Cursor', 'cursor-vscode': 'Cursor',
+  'visual studio code': 'VS Code', 'vscode': 'VS Code', 'copilot': 'Copilot', 'github-copilot': 'Copilot',
+  'cline': 'Cline', 'roo-code': 'Roo Code', 'kilo-code': 'Kilo Code',
+  'gemini': 'Gemini', 'goose': 'Goose', 'jetbrains': 'JetBrains', 'q-dev': 'Amazon Q',
+};
+
+var TYPE_COLORS = {
+  decision: '#3B82F6', preference: '#8B5CF6', task: '#F59E0B', snippet: '#10B981', note: '#6B7280',
+};
+
+var ACTION_VERBS = {
+  remember: 'stored', recall: 'searched', forget: 'deleted', list_memories: 'browsed',
+};
+
+// ── MCP Apps Communication Layer ───────────────────────────
+// Implements the JSON-RPC 2.0 postMessage protocol used by
+// @modelcontextprotocol/ext-apps App class.
+// Also supports simple type-based protocol for the test harness.
+var pendingCalls = {};
+var rpcIdCounter = 0;
+
+function callServerTool(name, args) {
+  return new Promise(function(resolve, reject) {
+    var id = ++rpcIdCounter;
+    pendingCalls[id] = { resolve: resolve, reject: reject };
+
+    // ext-apps protocol: JSON-RPC 2.0
+    window.parent.postMessage({
+      jsonrpc: '2.0', id: id,
+      method: 'tools/call',
+      params: { name: name, arguments: args || {} }
+    }, '*');
+
+    // Simple protocol for test harness
+    window.parent.postMessage({
+      type: 'tool_call', id: 'call_' + id,
+      name: name, arguments: args || {}
+    }, '*');
+
+    setTimeout(function() {
+      if (pendingCalls[id]) {
+        delete pendingCalls[id];
+        reject(new Error('Tool call timed out'));
+      }
+    }, 15000);
+  });
+}
+
+function connectToHost() {
+  window.parent.postMessage({
+    jsonrpc: '2.0', id: ++rpcIdCounter,
+    method: 'ui/initialize',
+    params: { name: 'Agent Memory Dashboard', version: '1.0.0' }
+  }, '*');
+}
+
+window.addEventListener('message', function(event) {
+  var data = event.data;
+  if (!data || typeof data !== 'object') return;
+
+  // JSON-RPC responses (ext-apps protocol)
+  if (data.jsonrpc === '2.0' && data.id != null && pendingCalls[data.id]) {
+    var pending = pendingCalls[data.id];
+    delete pendingCalls[data.id];
+    if (data.error) {
+      pending.reject(new Error(data.error.message || 'RPC Error'));
+    } else {
+      var result = data.result;
+      if (result && result.content) {
+        var tc = result.content.find(function(c) { return c.type === 'text'; });
+        if (tc) {
+          try { pending.resolve(JSON.parse(tc.text)); }
+          catch(e) { pending.resolve(tc.text); }
+        } else { pending.resolve(result); }
+      } else { pending.resolve(result); }
+    }
+    return;
+  }
+
+  // ext-apps notification: initial tool result
+  if (data.jsonrpc === '2.0' && data.method === 'tool/result') {
+    handleInitialToolResult(data.params);
+    return;
+  }
+
+  // Simple protocol responses (test harness)
+  if (data.type === 'tool_result') {
+    var numId = parseInt(String(data.id || '').replace('call_', ''), 10);
+    if (pendingCalls[numId]) {
+      var p = pendingCalls[numId];
+      delete pendingCalls[numId];
+      if (data.error) { p.reject(new Error(data.error)); }
+      else { p.resolve(data.result); }
+    }
+  }
+
+  // Pushed state updates (test harness / custom)
+  if (data.type === 'state_update') {
+    if (data.memories) { memories = data.memories; renderMemories(); updateStats(); }
+    if (data.activities) { activities = data.activities; renderActivities(); updateStats(); }
+  }
+});
+
+function handleInitialToolResult(result) {
+  if (!result) return;
+  var tc = result.content && result.content.find(function(c) { return c.type === 'text'; });
+  if (tc) {
+    try {
+      var parsed = JSON.parse(tc.text);
+      if (parsed.memories) { memories = parsed.memories; isLoading = false; renderMemories(); updateStats(); }
+      if (parsed.activities) { activities = parsed.activities; renderActivities(); updateStats(); }
+    } catch(e) {}
+  }
+}
+
+connectToHost();
+
+// ── Data Fetching ──────────────────────────────────────────
+function loadMemories(opts) {
+  var args = { limit: 50 };
+  if (opts && opts.type && opts.type !== 'all') args.type = opts.type;
+  if (opts && opts.tags) args.tags = opts.tags;
+
+  callServerTool('list_memories', args).then(function(result) {
+    if (result) {
+      memories = Array.isArray(result) ? result : (result.memories || []);
+      if (result.activities) { activities = result.activities; renderActivities(); }
+      if (result.activity_log) { activities = result.activity_log; renderActivities(); }
+    }
+    isLoading = false;
+    renderMemories();
+    updateStats();
+  }).catch(function(err) {
+    console.error('Failed to load memories:', err);
+    isLoading = false;
+    renderMemories();
+  });
+}
+
+function searchMemories(query) {
+  if (!query.trim()) { loadMemories({ type: currentTypeFilter }); return; }
+  var args = { query: query, limit: 20 };
+  if (currentTypeFilter !== 'all') args.type = currentTypeFilter;
+
+  callServerTool('recall', args).then(function(result) {
+    if (result) { memories = Array.isArray(result) ? result : (result.memories || []); }
+    renderMemories();
+  }).catch(function(err) { console.error('Search failed:', err); });
+}
+
+function deleteMemory(key) {
+  callServerTool('forget', { key: key }).then(function() {
+    memories = memories.filter(function(m) { return m.key !== key; });
+    renderMemories();
+    updateStats();
+  }).catch(function(err) { console.error('Delete failed:', err); });
+}
+
+function loadActivities() {
+  callServerTool('list_memories', { limit: 50 }).then(function(result) {
+    if (result && result.activities) { activities = result.activities; }
+    else if (result && result.activity_log) { activities = result.activity_log; }
+    renderActivities();
+    updateStats();
+  }).catch(function(err) { console.error('Failed to load activities:', err); renderActivities(); });
+}
+
+// ── Rendering Helpers ──────────────────────────────────────
+function getAgentColor(agentId) {
+  if (!agentId) return DEFAULT_AGENT_COLOR;
+  var id = agentId.toLowerCase();
+  var keys = Object.keys(AGENT_COLORS);
+  for (var i = 0; i < keys.length; i++) {
+    if (id.indexOf(keys[i]) !== -1) return AGENT_COLORS[keys[i]];
+  }
+  return DEFAULT_AGENT_COLOR;
+}
+
+function getAgentName(agentId) {
+  if (!agentId) return 'Unknown';
+  var id = agentId.toLowerCase();
+  var keys = Object.keys(AGENT_NAMES);
+  for (var i = 0; i < keys.length; i++) {
+    if (id.indexOf(keys[i]) !== -1) return AGENT_NAMES[keys[i]];
+  }
+  return agentId;
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  return str.length > len ? str.substring(0, len) + '...' : str;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  var now = new Date();
+  var diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+  return d.toLocaleDateString();
+}
+
+function el(tag, cls, styles) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (styles) { for (var k in styles) e.style[k] = styles[k]; }
+  return e;
+}
+
+// ── Render Memories ────────────────────────────────────────
+function renderMemories() {
+  var container = document.getElementById('memoryList');
+  var loading = document.getElementById('loadingState');
+
+  if (isLoading) { loading.style.display = ''; return; }
+  loading.style.display = 'none';
+
+  if (memories.length === 0) {
+    container.innerHTML = '';
+    var empty = el('div', 'empty-state');
+    var ico = el('div', 'text-3xl opacity-50'); ico.textContent = '\uD83E\uDDE0'; empty.appendChild(ico);
+    var txt = el('div', 'text-sm'); txt.textContent = searchQuery ? 'No memories found' : 'No memories yet'; empty.appendChild(txt);
+    var sub = el('div', 'text-xs text-slate-500'); sub.textContent = searchQuery ? 'Try a different search query' : 'Memories stored by agents will appear here'; empty.appendChild(sub);
+    container.appendChild(empty);
+    return;
+  }
+
+  container.innerHTML = '';
+  memories.forEach(function(mem) {
+    var card = el('div', 'memory-card fade-in');
+
+    // Top row
+    var top = el('div', 'card-top');
+    var dot = el('span', 'agent-dot', { backgroundColor: getAgentColor(mem.agent_id) });
+    dot.title = getAgentName(mem.agent_id);
+    top.appendChild(dot);
+
+    var key = el('span', 'card-key');
+    key.textContent = mem.key;
+    top.appendChild(key);
+
+    if (mem.type) {
+      var badge = el('span', 'badge', {
+        backgroundColor: (TYPE_COLORS[mem.type] || '#6B7280') + '22',
+        color: TYPE_COLORS[mem.type] || '#6B7280'
+      });
+      badge.textContent = mem.type;
+      top.appendChild(badge);
+    }
+
+    var del = el('button', 'delete-btn');
+    del.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+    del.onclick = function(e) { e.stopPropagation(); deleteMemory(mem.key); };
+    top.appendChild(del);
+    card.appendChild(top);
+
+    // Value
+    var val = el('div', 'card-value');
+    val.textContent = truncate(mem.value, 120);
+    card.appendChild(val);
+
+    // Bottom row
+    var bottom = el('div', 'card-bottom');
+    var tags = mem.tags || [];
+    if (tags.length > 0) {
+      tags.slice(0, 4).forEach(function(tag) {
+        var pill = el('button', 'tag-pill' + (currentTagFilter === tag ? ' active' : ''));
+        pill.textContent = tag;
+        pill.onclick = function(e) { e.stopPropagation(); toggleTagFilter(tag); };
+        bottom.appendChild(pill);
+      });
+      if (tags.length > 4) {
+        var more = el('span', 'text-xs text-slate-600');
+        more.textContent = '+' + (tags.length - 4);
+        bottom.appendChild(more);
+      }
+    }
+
+    var spacer = el('div', 'flex-1');
+    bottom.appendChild(spacer);
+
+    var agent = el('span', 'text-xs', { color: getAgentColor(mem.agent_id) });
+    agent.textContent = getAgentName(mem.agent_id);
+    bottom.appendChild(agent);
+
+    var time = el('span', 'text-xs text-slate-600');
+    time.textContent = timeAgo(mem.updated_at || mem.created_at);
+    bottom.appendChild(time);
+
+    card.appendChild(bottom);
+    container.appendChild(card);
+  });
+}
+
+// ── Render Activities ──────────────────────────────────────
+function renderActivities() {
+  var container = document.getElementById('activityList');
+  var loading = document.getElementById('activityLoading');
+  loading.style.display = 'none';
+
+  if (!activities || activities.length === 0) {
+    container.innerHTML = '';
+    var empty = el('div', 'empty-state');
+    var ico = el('div', 'text-3xl opacity-50'); ico.textContent = '\uD83D\uDCCA'; empty.appendChild(ico);
+    var txt = el('div', 'text-sm'); txt.textContent = 'No activity yet'; empty.appendChild(txt);
+    var sub = el('div', 'text-xs text-slate-500'); sub.textContent = 'Agent actions will appear here as they happen'; empty.appendChild(sub);
+    container.appendChild(empty);
+    return;
+  }
+
+  container.innerHTML = '';
+  activities.forEach(function(act) {
+    var item = el('div', 'activity-item fade-in', { color: getAgentColor(act.agent_id) });
+
+    var header = el('div', 'activity-header');
+    var name = el('span', 'text-xs font-medium', { color: getAgentColor(act.agent_id) });
+    name.textContent = getAgentName(act.agent_id);
+    header.appendChild(name);
+
+    var verb = el('span', 'text-xs text-slate-400');
+    verb.textContent = ACTION_VERBS[act.action] || act.action;
+    header.appendChild(verb);
+
+    if (act.target_key) {
+      var target = el('span', 'text-xs font-mono text-slate-300');
+      target.textContent = act.target_key;
+      header.appendChild(target);
+    }
+
+    var ts = el('span', 'text-xs text-slate-600 ml-auto');
+    ts.textContent = timeAgo(act.created_at);
+    header.appendChild(ts);
+    item.appendChild(header);
+
+    if (act.detail) {
+      var detail = el('div', 'activity-detail');
+      detail.textContent = truncate(act.detail, 100);
+      item.appendChild(detail);
+    }
+
+    container.appendChild(item);
+  });
+}
+
+function updateStats() {
+  var agents = {};
+  memories.forEach(function(m) { if (m.agent_id) agents[m.agent_id] = true; });
+  var agentCount = Object.keys(agents).length;
+  document.getElementById('statMemories').textContent = memories.length + ' memor' + (memories.length === 1 ? 'y' : 'ies');
+  document.getElementById('statAgents').textContent = agentCount + ' agent' + (agentCount === 1 ? '' : 's');
+  document.getElementById('statActions').textContent = (activities ? activities.length : 0) + ' action' + ((activities && activities.length === 1) ? '' : 's');
+}
+
+// ── Tab Switching ──────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < btns.length; i++) {
+    if (btns[i].dataset.tab === tab) btns[i].classList.add('active');
+    else btns[i].classList.remove('active');
+  }
+  document.getElementById('memoriesTab').className = tab === 'memories' ? 'flex flex-col flex-1 overflow-hidden' : 'hidden';
+  document.getElementById('activityTab').className = tab === 'activity' ? 'flex-1 overflow-y-auto' : 'hidden';
+  if (tab === 'activity' && activities.length === 0) loadActivities();
+}
+
+// ── Type Filter ────────────────────────────────────────────
+function filterByType(type) {
+  currentTypeFilter = type;
+  var btns = document.querySelectorAll('.type-tab');
+  for (var i = 0; i < btns.length; i++) {
+    if (btns[i].dataset.type === type) btns[i].classList.add('active');
+    else btns[i].classList.remove('active');
+  }
+  isLoading = true;
+  renderMemories();
+  loadMemories({ type: type });
+}
+
+// ── Tag Filter ─────────────────────────────────────────────
+function toggleTagFilter(tag) {
+  if (currentTagFilter === tag) { currentTagFilter = null; loadMemories({ type: currentTypeFilter }); }
+  else { currentTagFilter = tag; loadMemories({ type: currentTypeFilter, tags: [tag] }); }
+}
+
+// ── Search ─────────────────────────────────────────────────
+var searchInput = document.getElementById('searchInput');
+var searchTimeout = null;
+searchInput.addEventListener('input', function() {
+  searchQuery = this.value;
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(function() {
+    if (searchQuery.trim()) searchMemories(searchQuery);
+    else loadMemories({ type: currentTypeFilter });
+  }, 300);
+});
+searchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    clearTimeout(searchTimeout);
+    if (searchQuery.trim()) searchMemories(searchQuery);
+  }
+});
+
+// ── Init ───────────────────────────────────────────────────
+loadMemories();
+</script>
+</body>
+</html>

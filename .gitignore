@@ -1,0 +1,6 @@
+node_modules/
+dist/
+data/memories.db
+*.js
+!resources/**/*.js
+.DS_Store
