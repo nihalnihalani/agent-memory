@@ -42,9 +42,6 @@ export interface WidgetProps {
   query?: string;
   action?: string;
   memory?: Memory;
-  deletedKey?: string;
-  deletedType?: string;
-  agent?: string;
   handoff?: Handoff;
   contextMemories?: Memory[];
   decisions?: Memory[];
