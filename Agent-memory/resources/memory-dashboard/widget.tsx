@@ -25,7 +25,7 @@ export const widgetMetadata: WidgetMetadata = {
         access_count: z.number(),
         tags: z.array(z.string()),
       }),
-    ),
+    ).optional().default([]),
     activities: z
       .array(
         z.object({
@@ -38,7 +38,7 @@ export const widgetMetadata: WidgetMetadata = {
         }),
       )
       .optional(),
-    total: z.number(),
+    total: z.number().optional().default(0),
     query: z.string().optional(),
     action: z.string().optional(),
     memory: z.any().optional(),
