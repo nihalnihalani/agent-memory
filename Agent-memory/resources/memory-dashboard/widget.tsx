@@ -1,13 +1,15 @@
 import React from "react";
 import { McpUseProvider, useWidget, type WidgetMetadata } from "mcp-use/react";
 import { z } from "zod";
-import type { Memory, Activity, WidgetProps } from "./types";
+import type { Memory, Activity, Handoff, WidgetProps } from "./types";
 import MemoryCard from "./components/MemoryCard";
+import HandoffCard from "./components/HandoffCard";
 import SearchBar from "./components/SearchBar";
 import TypeFilter from "./components/TypeFilter";
 import StatsBar from "./components/StatsBar";
 import ActivityFeed from "./components/ActivityFeed";
 import QuickAddForm from "./components/QuickAddForm";
+import { getAgentName, getAgentColor } from "./utils";
 
 export const widgetMetadata: WidgetMetadata = {
   description: "Interactive agent memory dashboard with search, filtering, and AI analysis",
@@ -45,6 +47,10 @@ export const widgetMetadata: WidgetMetadata = {
     deletedKey: z.string().optional(),
     deletedType: z.string().optional(),
     agent: z.string().optional(),
+    handoff: z.any().optional(),
+    contextMemories: z.array(z.any()).optional(),
+    decisions: z.array(z.any()).optional(),
+    preferences: z.array(z.any()).optional(),
   }),
 };
 
@@ -92,6 +98,10 @@ function MemoryDashboardInner() {
 
   const handleQuickAdd = async (key: string, value: string, type: string) => {
     await callTool("remember", { key, value, type });
+  };
+
+  const handlePickup = async (handoffId: number) => {
+    await callTool("pickup", { handoff_id: handoffId });
   };
 
   // ---- Styles ----
@@ -289,7 +299,7 @@ function MemoryDashboardInner() {
           background: bg,
         }}
       >
-        {(["memories", "activity"] as const).map((tab) => (
+        {(["memories", "handoffs", "activity"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabSwitch(tab)}
@@ -308,10 +318,15 @@ function MemoryDashboardInner() {
               fontFamily: "inherit",
             }}
           >
-            {tab === "memories" ? "Memories" : "Activity"}
+            {tab === "memories" ? "Memories" : tab === "handoffs" ? "Handoffs" : "Activity"}
           </button>
         ))}
       </div>
+
+      {/* ---- Handoff Action Banner ---- */}
+      {p?.action && p.action.startsWith("handoff_") && p.handoff && (
+        <HandoffBanner action={p.action} handoff={p.handoff as Handoff} isDark={isDark} />
+      )}
 
       {/* ---- Content ---- */}
       <div
@@ -337,6 +352,18 @@ function MemoryDashboardInner() {
                 </div>
               ))}
             </div>
+          )
+        ) : activeTab === "handoffs" ? (
+          p?.handoff ? (
+            <div style={{ padding: "8px 12px" }}>
+              <HandoffCard
+                handoff={p.handoff as Handoff}
+                isDark={isDark}
+                onPickup={handlePickup}
+              />
+            </div>
+          ) : (
+            <HandoffEmptyState isDark={isDark} onAction={sendFollowUpMessage} />
           )
         ) : (
           <ActivityFeed activities={activities} isDark={isDark} />
@@ -364,6 +391,146 @@ function MemoryDashboardInner() {
         ::-webkit-scrollbar-thumb { background: ${isDark ? "#475569" : "#cbd5e1"}; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: ${isDark ? "#64748b" : "#94a3b8"}; }
       `}</style>
+    </div>
+  );
+}
+
+function HandoffBanner({
+  action,
+  handoff,
+  isDark,
+}: {
+  action: string;
+  handoff: Handoff;
+  isDark: boolean;
+}) {
+  const fromColor = getAgentColor(handoff.from_agent);
+  const toName = handoff.picked_up_by
+    ? getAgentName(handoff.picked_up_by)
+    : handoff.to_agent
+      ? getAgentName(handoff.to_agent)
+      : "next agent";
+
+  const config: Record<string, { bg: string; border: string; icon: string; label: string }> = {
+    handoff_created: {
+      bg: isDark ? "rgba(245,158,11,0.08)" : "rgba(245,158,11,0.06)",
+      border: "#F59E0B",
+      icon: "\u{1F91D}",
+      label: `${getAgentName(handoff.from_agent)} handed off to ${toName}`,
+    },
+    handoff_picked_up: {
+      bg: isDark ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.06)",
+      border: "#3B82F6",
+      icon: "\u{1F3C3}",
+      label: `${toName} picked up handoff from ${getAgentName(handoff.from_agent)}`,
+    },
+    handoff_completed: {
+      bg: isDark ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.06)",
+      border: "#22c55e",
+      icon: "\u2705",
+      label: `Handoff #${handoff.id} completed`,
+    },
+  };
+
+  const c = config[action];
+  if (!c) return null;
+
+  return (
+    <div
+      style={{
+        margin: "8px 12px 0",
+        padding: "8px 12px",
+        borderRadius: 8,
+        background: c.bg,
+        borderLeft: `3px solid ${c.border}`,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span style={{ fontSize: 14 }}>{c.icon}</span>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: isDark ? "#e2e8f0" : "#1e293b",
+          }}
+        >
+          {c.label}
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            color: isDark ? "#94a3b8" : "#64748b",
+            marginTop: 2,
+          }}
+        >
+          {handoff.summary.length > 100
+            ? handoff.summary.slice(0, 100) + "..."
+            : handoff.summary}
+        </div>
+      </div>
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          backgroundColor: fromColor,
+          flexShrink: 0,
+        }}
+      />
+    </div>
+  );
+}
+
+function HandoffEmptyState({
+  isDark,
+  onAction,
+}: {
+  isDark: boolean;
+  onAction: (msg: string) => void;
+}) {
+  const textColor = isDark ? "#64748b" : "#94a3b8";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 200,
+        gap: 12,
+        color: textColor,
+        padding: 24,
+      }}
+    >
+      <div style={{ fontSize: 30, opacity: 0.5 }}>{"\u{1F91D}"}</div>
+      <div style={{ fontSize: 13 }}>No active handoffs</div>
+      <div style={{ fontSize: 11, textAlign: "center" }}>
+        When an agent gets stuck or finishes their part, they can hand off to the next agent.
+      </div>
+      <button
+        onClick={() =>
+          onAction(
+            "Create a handoff for the next agent. Summarize what I've been working on and what needs to be done next.",
+          )
+        }
+        style={{
+          padding: "6px 12px",
+          borderRadius: 8,
+          fontSize: 11,
+          color: isDark ? "#94a3b8" : "#64748b",
+          background: isDark ? "rgba(30,41,59,0.5)" : "#f1f5f9",
+          border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          fontFamily: "inherit",
+        }}
+      >
+        Create a handoff
+      </button>
     </div>
   );
 }
