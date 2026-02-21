@@ -93,7 +93,6 @@ function MemoryDashboardInner() {
   // ---- Styles ----
 
   const bg = isDark ? "#0f172a" : "#f8fafc";
-  const cardBg = isDark ? "#1e293b" : "#ffffff";
   const borderColor = isDark ? "#334155" : "#e2e8f0";
   const textPrimary = isDark ? "#e2e8f0" : "#1e293b";
   const textMuted = isDark ? "#94a3b8" : "#64748b";
@@ -257,21 +256,15 @@ function MemoryDashboardInner() {
               padding: "8px 16px",
               fontSize: 11,
               fontWeight: 500,
-              color:
-                activeTab === tab
-                  ? textPrimary
-                  : textMuted,
-              borderBottom: `2px solid ${activeTab === tab ? "#8B5CF6" : "transparent"}`,
+              color: activeTab === tab ? textPrimary : textMuted,
               background: "none",
-              border: "none",
-              borderBottomWidth: 2,
-              borderBottomStyle: "solid",
-              borderBottomColor:
-                activeTab === tab ? "#8B5CF6" : "transparent",
+              borderTop: "none",
+              borderLeft: "none",
+              borderRight: "none",
+              borderBottom: `2px solid ${activeTab === tab ? "#8B5CF6" : "transparent"}`,
               cursor: "pointer",
               transition: "all 0.2s ease",
               fontFamily: "inherit",
-              textTransform: "capitalize",
             }}
           >
             {tab === "memories" ? "Memories" : "Activity"}
