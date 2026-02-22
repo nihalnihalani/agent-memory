@@ -338,6 +338,16 @@ Add the local server to your MCP config:
 }
 ```
 
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `memory://current-context` | Decisions, preferences, recent tasks, and stats |
+| `memory://agent-activity` | Feed of agent actions |
+| `memory://{key}` | Lookup a specific memory by key |
+| `memory://handoff-queue` | Pending handoffs for pickup |
+| `memory://changelog` | Recent memory changes |
+
 Or use the deployed production instance:
 
 ```json
