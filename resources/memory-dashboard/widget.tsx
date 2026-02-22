@@ -235,6 +235,10 @@ function MemoryDashboardInner() {
   };
 
   const handleDelete = async (key: string) => {
+    if (!window.confirm(`Are you sure you want to delete memory "${key}"?`)) {
+      return;
+    }
+
     // Optimistic: remove from UI immediately
     setDeletingKey(key);
     setAllMemories(prev => prev.filter(m => m.key !== key));
@@ -420,7 +424,7 @@ function MemoryDashboardInner() {
     return [...filtered].sort((a, b) => {
       switch (sortBy) {
         case "created":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return new Date(b.created_at + (b.created_at.endsWith("Z") ? "" : "Z")).getTime() - new Date(a.created_at + (a.created_at.endsWith("Z") ? "" : "Z")).getTime();
         case "alpha":
           return a.key.localeCompare(b.key);
         case "type":
@@ -429,7 +433,7 @@ function MemoryDashboardInner() {
           return b.access_count - a.access_count;
         case "updated":
         default:
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+          return new Date(b.updated_at + (b.updated_at.endsWith("Z") ? "" : "Z")).getTime() - new Date(a.updated_at + (a.updated_at.endsWith("Z") ? "" : "Z")).getTime();
       }
     });
   }, [allMemories, typeFilter, sortBy]);
