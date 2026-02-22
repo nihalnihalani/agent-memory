@@ -1,47 +1,62 @@
 <div align="center">
 
+<br />
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Agent_Memory-8B5CF6?style=for-the-badge&logoColor=white&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiLz48Y2lyY2xlIGN4PSI0IiBjeT0iNiIgcj0iMiIgb3BhY2l0eT0iMC42Ii8+PGNpcmNsZSBjeD0iMjAiIGN5PSI2IiByPSIyIiBvcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSI0IiBjeT0iMTgiIHI9IjIiIG9wYWNpdHk9IjAuNiIvPjxjaXJjbGUgY3g9IjIwIiBjeT0iMTgiIHI9IjIiIG9wYWNpdHk9IjAuNiIvPjxsaW5lIHgxPSIxMiIgeTE9IjEyIiB4Mj0iNCIgeTI9IjYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC40Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTIiIHgyPSIyMCIgeTI9IjYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC40Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTIiIHgyPSI0IiB5Mj0iMTgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC40Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTIiIHgyPSIyMCIgeTI9IjE4IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNCIvPjwvc3ZnPg==" />
+  <img alt="Agent Memory" src="https://img.shields.io/badge/Agent_Memory-8B5CF6?style=for-the-badge&logoColor=white&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjQiLz48Y2lyY2xlIGN4PSI0IiBjeT0iNiIgcj0iMiIgb3BhY2l0eT0iMC42Ii8+PGNpcmNsZSBjeD0iMjAiIGN5PSI2IiByPSIyIiBvcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSI0IiBjeT0iMTgiIHI9IjIiIG9wYWNpdHk9IjAuNiIvPjxjaXJjbGUgY3g9IjIwIiBjeT0iMTgiIHI9IjIiIG9wYWNpdHk9IjAuNiIvPjxsaW5lIHgxPSIxMiIgeTE9IjEyIiB4Mj0iNCIgeTI9IjYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC40Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTIiIHgyPSIyMCIgeTI9IjYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC40Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTIiIHgyPSI0IiB5Mj0iMTgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC40Ii8+PGxpbmUgeDE9IjEyIiB5MT0iMTIiIHgyPSIyMCIgeTI9IjE4IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNCIvPjwvc3ZnPg==" />
+</picture>
+
 # Agent Memory
 
-### The shared memory layer that lives *inside* your AI conversations
+**The shared brain for AI agents**
 
-[![MCP Apps Hackathon 2026](https://img.shields.io/badge/MCP_Apps_Hackathon_2026-Y_Combinator-F06529?style=for-the-badge)](https://events.ycombinator.com/manufact-hackathon26)
-[![Built with Manufact](https://img.shields.io/badge/Built_with-Manufact-4F46E5?style=for-the-badge)](https://manufact.com)
-[![Try it Live](https://img.shields.io/badge/Try_it_Live-Connect_Now-brightgreen?style=for-the-badge)](#-connect-now)
-
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![React 19](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
+Store context in Claude. Recall it in ChatGPT. Hand off work to Cursor.<br/>
+One memory layer across every AI tool you use.
 
 <br />
 
-**Store context in Claude. Recall it in ChatGPT. See which agent knows what — right inside your conversation.**
-
-No separate dashboards. No heavy ML dependencies. Just a universal memory layer that renders inline as an interactive widget.
+[![MCP Apps Hackathon](https://img.shields.io/badge/MCP_Apps_Hackathon-Y_Combinator-F06529?style=flat-square)](https://events.ycombinator.com/manufact-hackathon26)
+[![Built with Manufact](https://img.shields.io/badge/Built_with-Manufact-4F46E5?style=flat-square)](https://manufact.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![React 19](https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](#license)
 
 <br />
 
-[Connect Now](#-connect-now) · [The Problem](#-the-problem) · [Architecture](#%EF%B8%8F-architecture) · [Features](#-features) · [Tools & Resources](#-tools--resources) · [Quick Start](#-quick-start)
+[Get Started](#-get-started) &nbsp;&middot;&nbsp; [Features](#-features) &nbsp;&middot;&nbsp; [Architecture](#-architecture) &nbsp;&middot;&nbsp; [API Reference](#-api-reference) &nbsp;&middot;&nbsp; [How It Works](#-how-it-works)
+
+<br />
 
 </div>
 
 ---
 
-> *Every time an AI agent forgets and you re-explain your tech stack, preferences, and decisions — that's wasted tokens, wasted money, and wasted compute. Agent Memory eliminates repeat context by letting agents recall what they already know, cutting token usage by up to 60%.*
+## Why
 
----
+Every AI conversation starts from zero. Your agent doesn't remember you chose Supabase, prefer Tailwind, or that auth uses JWT. You re-explain — every single time.
 
-## Connect Now
+That's **10,000-20,000 wasted tokens per day** just on repeated context. At scale, that's billions of redundant GPU cycles per month.
 
-Add Agent Memory to any MCP-compatible client with a single URL:
+> [!IMPORTANT]
+> Agent Memory eliminates this. Agents remember what they already know, cutting token usage by up to **60%** — less inference, less energy, less cost.
+
+<br />
+
+## Get Started
+
+Connect Agent Memory to any MCP-compatible client with a single URL:
 
 ```
 https://winter-meadow-1651f.run.mcp-use.com/mcp
 ```
 
-**Claude Desktop / Claude Code** — add to your MCP settings:
+<details open>
+<summary><strong>Claude Desktop / Claude Code</strong></summary>
+
+<br />
+
 ```json
 {
   "mcpServers": {
@@ -52,268 +67,30 @@ https://winter-meadow-1651f.run.mcp-use.com/mcp
 }
 ```
 
-**ChatGPT** — connect via the Manufact MCP Apps marketplace.
+</details>
 
-**Cursor / VS Code / Windsurf / Cline / Roo Code / Goose / Codex** — paste the URL into your MCP server configuration.
+<details>
+<summary><strong>ChatGPT</strong></summary>
 
----
+<br />
 
-## The Problem
+Connect via the [Manufact MCP Apps marketplace](https://manufact.com).
 
-Every AI conversation starts from zero. Your agent doesn't remember that you chose Supabase last week, that you prefer Tailwind over CSS modules, or that the auth system uses JWT. So you re-explain. Every. Single. Time.
+</details>
 
-### The math that makes this hurt
+<details>
+<summary><strong>Cursor / VS Code / Windsurf / Cline / Roo Code / Goose / Codex</strong></summary>
 
-| Metric | Value |
-|--------|-------|
-| Average "re-context" per conversation | **~500–1,000 tokens** |
-| Power user conversations/day (across Claude, ChatGPT, Cursor) | **20+** |
-| Wasted tokens/day just repeating yourself | **10,000–20,000** |
-| At scale (1M users) | **Billions of redundant tokens/month** |
-| That equals | **Massive GPU hours = real carbon footprint** |
+<br />
 
-### The real cost
+Paste the URL into your MCP server configuration. Any client that speaks MCP can connect.
 
-Every redundant token is a GPU cycle that didn't need to happen. At scale, repeated context isn't just annoying — it's an environmental problem. Billions of tokens reprocessed monthly across millions of users translates directly to unnecessary energy consumption and compute waste.
+</details>
 
-**Agent Memory is a green layer for AI — it remembers so the model doesn't have to re-compute. Less inference, less energy, less cost.**
+<details>
+<summary><strong>Run locally</strong></summary>
 
-Independent validation supports this: projects in the MCP memory space have demonstrated **65% token reduction** in Claude Code sessions and **30x token compression** ratios. The data is clear — persistent memory dramatically cuts redundant inference.
-
-And with Agent Memory, you can **see your savings right inside the conversation** through our inline dashboard widget.
-
----
-
-## What Makes Agent Memory Different
-
-Existing memory solutions (MemoryMesh, Mem0, BasicMemory) all share the same limitation: **they require separate dashboards, external APIs, or heavy ML pipelines**. You store memories in one place and hope your agent finds them.
-
-Agent Memory is the first shared memory MCP server with an **inline widget that renders directly inside your AI conversation**:
-
-| Feature | Agent Memory | Other Solutions |
-|---------|:---:|:---:|
-| Inline widget inside conversations | **Yes** | No |
-| Cross-agent memory (Claude + ChatGPT + Cursor) | **Yes** | Limited |
-| Visual agent attribution (who stored what) | **Yes** | No |
-| Agent-to-agent handoffs | **Yes** | No |
-| Full-text search with BM25 ranking | **Yes** | Varies |
-| Zero ML dependencies | **Yes** | Often heavy |
-| Single URL to connect | **Yes** | Complex setup |
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        MCP CLIENTS                                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│  │  Claude   │ │ ChatGPT  │ │  Cursor  │ │ VS Code  │ │  Goose   │ │
-│  │   Code   │ │          │ │          │ │ Copilot  │ │  Codex   │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │
-│       │             │            │             │            │       │
-└───────┼─────────────┼────────────┼─────────────┼────────────┼───────┘
-        │             │            │             │            │
-        └─────────────┼────────────┼─────────────┼────────────┘
-                      │            │             │
-                      ▼            ▼             ▼
-              ┌──────────────────────────────────────┐
-              │     HTTP Streamable MCP Protocol      │
-              │  https://winter-meadow-1651f.run...   │
-              └──────────────────┬───────────────────┘
-                                 │
-                                 ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                      MCP SERVER LAYER                              │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │                     7 MCP TOOLS                              │  │
-│  │  remember · recall · forget · list-memories                  │  │
-│  │  handoff · pickup · complete-handoff                         │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │                    5 MCP RESOURCES                           │  │
-│  │  memory://current-context · memory://agent-activity          │  │
-│  │  memory://{key} · memory://handoff-queue · memory://changelog│  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │                     1 MCP PROMPT                             │  │
-│  │  session-briefing (full agent onboarding)                    │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-└────────────────────────┬───────────────────────────────────────────┘
-                         │
-                         ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                    PERSISTENCE LAYER                               │
-│                                                                    │
-│  ┌──────────────────────┐  ┌──────────────────────────────────┐   │
-│  │   SQLite + WAL Mode   │  │   FTS5 Full-Text Search Engine   │  │
-│  │                        │  │                                  │  │
-│  │  memories             │  │   BM25 relevance ranking          │  │
-│  │  tags                 │  │   Porter stemming + unicode61     │  │
-│  │  activity_log         │  │   Auto-synced via triggers        │  │
-│  │  handoffs             │  │                                  │  │
-│  │  memory_history       │  │   Composite scoring:              │  │
-│  │                        │  │   60% BM25 + 20% Recency         │  │
-│  │  6 tables · 8 indexes │  │   + 10% Access + 10% Type        │  │
-│  └──────────────────────┘  └──────────────────────────────────┘   │
-└────────────────────────┬───────────────────────────────────────────┘
-                         │
-                         ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                  INLINE WIDGET LAYER                               │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │              React 19 Interactive Dashboard                  │  │
-│  │                                                               │  │
-│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌────────────┐  │  │
-│  │  │  Memory   │ │  Search   │ │ Activity  │ │  Handoff   │  │  │
-│  │  │  Browser  │ │  & Filter │ │   Feed    │ │  Manager   │  │  │
-│  │  └───────────┘ └───────────┘ └───────────┘ └────────────┘  │  │
-│  │                                                               │  │
-│  │  Tailwind CSS v4 · Dark/Light Mode · Agent Color Coding     │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│         Renders INLINE inside Claude, ChatGPT, Cursor, etc.       │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow
-
-```
-Agent stores memory          Agent recalls memory          Agent hands off work
-       │                            │                             │
-       ▼                            ▼                             ▼
-   remember()                   recall()                      handoff()
-       │                            │                             │
-       ▼                            ▼                             ▼
-  SQLite INSERT              FTS5 MATCH query              Store handoff +
-  + FTS5 trigger            + composite scoring            context_keys
-       │                            │                             │
-       ▼                            ▼                             ▼
-  Activity logged            Ranked results                pickup() by
-  + history saved            + access counted              next agent
-       │                            │                             │
-       ▼                            ▼                             ▼
-  Widget shows               Widget displays              Widget shows
-  "Memory saved!"            search results               full briefing
-```
-
----
-
-## Features
-
-### Intelligent Memory System
-
-- **5 memory types**: `decision` · `preference` · `task` · `snippet` · `note`
-- **Full-text search** with SQLite FTS5 and BM25 relevance ranking
-- **Composite scoring algorithm** that weighs relevance (60%), recency (20%), access patterns (10%), and type priority (10%)
-- **Tag-based organization** with multi-tag filtering
-- **Conflict detection** when different agents update the same memory
-
-### Cross-Agent Collaboration
-
-- **Universal MCP compatibility** — any client that speaks MCP can connect
-- **Agent attribution** — every memory and action is tagged with which agent created it
-- **Color-coded agent icons** — Claude (orange), ChatGPT (green), Cursor (blue), and 10+ more
-- **Activity feed** — see exactly what each agent did and when
-
-### Agent-to-Agent Handoffs
-
-- **Structured work transfer** between agents with summary, context, and next steps
-- **Context inheritance** — handoff includes references to relevant memories
-- **Atomic status management** — `pending` → `in_progress` → `completed`
-- **Handoff queue** — browse and accept pending handoffs from any agent
-
-### Inline Dashboard Widget
-
-- **Renders inside conversations** — no separate dashboard needed
-- **Memory browser** with card and list views
-- **Real-time search** with debounced FTS5 queries
-- **Type and tag filtering** with visual badges
-- **Quick-add form** for creating memories without tool calls
-- **Activity timeline** showing cross-agent collaboration
-- **Handoff viewer** with one-click pickup
-- **Dark mode / light mode** support
-- **Sorting** by creation date, update date, or access frequency
-
-### Auto-Context Resource
-
-The `memory://current-context` resource automatically surfaces your decisions, preferences, and recent tasks — so the agent already knows your context without you spending tokens re-explaining it. This is the core mechanism behind token savings.
-
----
-
-## Tools & Resources
-
-### MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `remember` | Store a memory with key, value, type, tags, and context. Handles conflicts when different agents update the same key. |
-| `recall` | Full-text search with FTS5 + BM25 composite scoring. Returns ranked results weighted by relevance, recency, and access patterns. |
-| `forget` | Delete a memory by key with cascading cleanup of tags and history. |
-| `list-memories` | Browse all memories with pagination, type filtering, and tag filtering. |
-| `handoff` | Create an agent-to-agent work handoff with summary, stuck reason, next steps, and context memory references. |
-| `pickup` | Accept a pending handoff. Auto-loads context memories and all relevant decisions/preferences for a full briefing. |
-| `complete-handoff` | Mark a handoff as completed with an optional result summary. |
-
-### MCP Resources
-
-| URI | Description |
-|-----|-------------|
-| `memory://current-context` | Full project briefing: decisions, preferences, recent tasks, stats, pending handoffs. **This is what saves tokens.** |
-| `memory://agent-activity` | Agent action feed — who did what and when across all connected agents. |
-| `memory://{key}` | Look up a specific memory by key (e.g., `memory://project-db-schema`). |
-| `memory://handoff-queue` | View all pending, in-progress, and recently completed handoffs. |
-| `memory://changelog` | Memory modification history with old vs. new values and agent attribution. |
-
-### MCP Prompt
-
-| Name | Description |
-|------|-------------|
-| `session-briefing` | Full agent onboarding prompt. Optional `focus` parameter to filter context to a specific topic. |
-
----
-
-## Composite Scoring Algorithm
-
-When you `recall` a memory, Agent Memory doesn't just do keyword matching. It uses a composite scoring algorithm that considers multiple signals:
-
-```
-Score = (0.6 × BM25) + (0.2 × Recency) + (0.1 × AccessCount) + (0.1 × TypePriority)
-```
-
-| Signal | Weight | Formula | Why |
-|--------|--------|---------|-----|
-| **BM25 Relevance** | 60% | FTS5 built-in ranking | Most relevant results first |
-| **Recency** | 20% | `1 / (1 + age_days × 0.1)` | Recent memories matter more |
-| **Access Count** | 10% | `log(1 + count) / log(1 + max)` | Frequently used = important |
-| **Type Priority** | 10% | decision > preference > task > snippet > note | Decisions outrank notes |
-
----
-
-## Database Schema
-
-Agent Memory uses SQLite in WAL mode with FTS5 for blazing-fast full-text search:
-
-| Table | Purpose |
-|-------|---------|
-| `memories` | Core memory storage (key, value, type, context, agent_id, access_count) |
-| `tags` | Tag associations with cascade delete |
-| `activity_log` | Full audit trail of every agent action |
-| `handoffs` | Agent-to-agent work transfers with status tracking |
-| `memory_history` | Change tracking — every update preserves the previous version |
-| `memories_fts` | FTS5 virtual table with Porter stemming and auto-sync triggers |
-
-**8 indexes** for fast queries across all access patterns.
-
----
-
-## Quick Start
-
-### Run locally
+<br />
 
 ```bash
 git clone https://github.com/nihalnihalani/agent-memory.git
@@ -322,67 +99,277 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3010/inspector](http://localhost:3010/inspector) to test the server and widget.
+Then connect at `http://localhost:3010/mcp` or open the [inspector](http://localhost:3010/inspector).
 
-### Connect from your AI client
+</details>
 
-Add the local server to your MCP config:
+<br />
 
-```json
-{
-  "mcpServers": {
-    "agent-memory": {
-      "url": "http://localhost:3010/mcp"
-    }
-  }
-}
+## Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Intelligent Memory
+
+- **5 memory types** — `decision` `preference` `task` `snippet` `note`
+- **FTS5 search** with BM25 relevance ranking
+- **Composite scoring** — relevance, recency, access frequency, type priority
+- **Tag-based** organization with multi-tag filtering
+- **Conflict detection** across agents
+
+</td>
+<td width="50%" valign="top">
+
+### Cross-Agent Collaboration
+
+- **Universal MCP** — works with every MCP-compatible client
+- **Agent attribution** — every memory tagged with its creator
+- **Color-coded agents** — Claude, ChatGPT, Cursor, and 10+ more
+- **Activity feed** — see what each agent did and when
+- **Structured handoffs** — pass work between agents seamlessly
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Inline Dashboard
+
+- **Renders inside conversations** — no separate app
+- **Search, filter, sort** — full-text, by type, by date
+- **Quick-add** — create memories without tool calls
+- **Inline editing** — update memories in place
+- **Dark & light mode** — adapts to your client
+
+</td>
+<td width="50%" valign="top">
+
+### Agent Handoffs
+
+- **Structured work transfer** — summary, context, next steps
+- **Context inheritance** — references to relevant memories
+- **Status tracking** — `pending` `in_progress` `completed`
+- **One-click pickup** — accept handoffs from the dashboard
+- **Auto-briefing** — new agent gets full context on pickup
+
+</td>
+</tr>
+</table>
+
+<br />
+
+## What Makes This Different
+
+| | Agent Memory | Others |
+|---|:---:|:---:|
+| Inline widget inside conversations | **Yes** | No |
+| Cross-agent memory (Claude + ChatGPT + Cursor) | **Yes** | Limited |
+| Agent-to-agent handoffs | **Yes** | No |
+| Visual agent attribution | **Yes** | No |
+| FTS5 + composite scoring | **Yes** | Keyword only |
+| Zero ML dependencies | **Yes** | Often heavy |
+| Single URL to connect | **Yes** | Complex setup |
+
+<br />
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Clients["MCP Clients"]
+        Claude["Claude Code"]
+        ChatGPT["ChatGPT"]
+        Cursor["Cursor"]
+        VSCode["VS Code"]
+        Others["Any MCP Client"]
+    end
+
+    subgraph Server["Agent Memory Server"]
+        direction TB
+        Tools["7 Tools<br/><code>remember · recall · forget · list</code><br/><code>handoff · pickup · complete</code>"]
+        Resources["5 Resources<br/><code>current-context · agent-activity</code><br/><code>memory://{key} · handoff-queue · changelog</code>"]
+        Prompt["1 Prompt<br/><code>session-briefing</code>"]
+    end
+
+    subgraph Storage["Persistence Layer"]
+        SQLite["SQLite + WAL"]
+        FTS5["FTS5 Search Engine"]
+    end
+
+    subgraph Widget["Inline Widget"]
+        React["React 19 Dashboard"]
+    end
+
+    Clients -->|"HTTP Streamable MCP"| Server
+    Server --> Storage
+    Server --> Widget
+
+    style Clients fill:#1e1b4b,stroke:#4f46e5,color:#e0e7ff
+    style Server fill:#1a1a2e,stroke:#8b5cf6,color:#e0e7ff
+    style Storage fill:#0f172a,stroke:#3b82f6,color:#e0e7ff
+    style Widget fill:#0f172a,stroke:#10b981,color:#e0e7ff
 ```
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant A as Agent (Claude)
+    participant S as Agent Memory
+    participant B as Agent (ChatGPT)
+
+    A->>S: remember("db-choice", "PostgreSQL")
+    Note over S: SQLite INSERT + FTS5 index
+    S-->>A: Stored + widget updates
+
+    B->>S: recall("database")
+    Note over S: FTS5 MATCH + composite scoring
+    S-->>B: "PostgreSQL" (ranked result)
+
+    A->>S: handoff(summary, context_keys)
+    Note over S: Store handoff + link memories
+    B->>S: pickup(handoff_id)
+    Note over S: Load context + full briefing
+    S-->>B: Complete project context
+```
+
+<br />
+
+## API Reference
+
+### Tools
+
+| Tool | Description |
+|:-----|:------------|
+| **`remember`** | Store a memory with key, value, type, tags, and context. Handles conflicts when agents update the same key. |
+| **`recall`** | Full-text search with FTS5 + BM25 composite scoring. Returns ranked results by relevance, recency, and access patterns. |
+| **`forget`** | Delete a memory by key with cascading cleanup of tags and history. |
+| **`list-memories`** | Browse memories with pagination, type filtering, and tag filtering. |
+| **`handoff`** | Create an agent-to-agent work transfer with summary, stuck reason, next steps, and context references. |
+| **`pickup`** | Accept a pending handoff. Auto-loads context memories and relevant decisions for a full briefing. |
+| **`complete-handoff`** | Mark a handoff as completed with a result summary. |
 
 ### Resources
 
 | URI | Description |
-|-----|-------------|
-| `memory://current-context` | Decisions, preferences, recent tasks, and stats |
-| `memory://agent-activity` | Feed of agent actions |
-| `memory://{key}` | Lookup a specific memory by key |
-| `memory://handoff-queue` | Pending handoffs for pickup |
-| `memory://changelog` | Recent memory changes |
+|:-----|:------------|
+| **`memory://current-context`** | Full project briefing: decisions, preferences, recent tasks, stats, pending handoffs. *This is what saves tokens.* |
+| **`memory://agent-activity`** | Agent action feed — who did what and when across all agents. |
+| **`memory://{key}`** | Look up a specific memory by key. |
+| **`memory://handoff-queue`** | All pending, in-progress, and recently completed handoffs. |
+| **`memory://changelog`** | Memory modification history with old vs. new values and agent attribution. |
 
-Or use the deployed production instance:
+### Prompt
 
-```json
-{
-  "mcpServers": {
-    "agent-memory": {
-      "url": "https://winter-meadow-1651f.run.mcp-use.com/mcp"
-    }
-  }
-}
+| Name | Description |
+|:-----|:------------|
+| **`session-briefing`** | Full agent onboarding. Optional `focus` parameter to filter context to a specific topic. |
+
+<br />
+
+## How It Works
+
+### Composite Scoring
+
+When you `recall`, Agent Memory ranks results using four signals:
+
+```
+Score = (0.6 × BM25) + (0.2 × Recency) + (0.1 × Access) + (0.1 × Type)
 ```
 
----
+| Signal | Weight | Why |
+|:-------|:------:|:----|
+| **BM25 Relevance** | 60% | Most relevant results first |
+| **Recency** | 20% | Recent memories surface higher |
+| **Access Count** | 10% | Frequently used = important |
+| **Type Priority** | 10% | `decision` > `preference` > `task` > `snippet` > `note` |
+
+### Database Schema
+
+SQLite in WAL mode with FTS5 for full-text search:
+
+```mermaid
+erDiagram
+    memories ||--o{ tags : has
+    memories ||--o{ memory_history : tracks
+    memories }o--|| memories_fts : indexes
+    activity_log }o--|| memories : references
+
+    memories {
+        int id PK
+        text key UK
+        text value
+        text type
+        text context
+        text agent_id
+        int access_count
+        datetime created_at
+        datetime updated_at
+    }
+
+    tags {
+        int id PK
+        int memory_id FK
+        text tag
+    }
+
+    handoffs {
+        int id PK
+        text from_agent
+        text to_agent
+        text status
+        text summary
+        text next_steps
+    }
+
+    activity_log {
+        int id PK
+        text agent_id
+        text action
+        text target_key
+        datetime created_at
+    }
+```
+
+> [!TIP]
+> The `memory://current-context` resource automatically surfaces your decisions and preferences at the start of every conversation — so the agent already has your context without you spending tokens re-explaining it.
+
+<br />
+
+## Token Savings
+
+| Scale | Daily Waste | With Agent Memory |
+|:------|:------------|:------------------|
+| **1 user** | 10K-20K tokens | Eliminated |
+| **1,000 users** | 10M-20M tokens | ~60% reduction |
+| **1M users** | 10B-20B tokens | Billions saved |
+
+Every token saved is a GPU cycle that doesn't fire. At scale, Agent Memory is infrastructure for sustainable AI.
+
+<br />
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Language** | TypeScript 5.9 | Type-safe MCP server development |
-| **MCP Framework** | [Manufact SDK](https://manufact.com) (mcp-use) | MCP server + widget framework |
-| **Database** | SQLite via `better-sqlite3` | Persistent storage with WAL mode |
-| **Search** | FTS5 | Full-text search with BM25 ranking |
-| **Validation** | Zod 4 | Runtime schema validation for all inputs |
-| **UI Framework** | React 19 | Interactive inline dashboard widget |
-| **UI Components** | @openai/apps-sdk-ui | ChatGPT-compatible widget primitives |
-| **Styling** | Tailwind CSS v4 | Responsive design with dark mode |
-| **State Management** | TanStack React Query | Async data fetching in widgets |
-| **Routing** | React Router 7 | Widget navigation |
-| **Build Tool** | Vite 7 | Fast builds with HMR |
-| **Server** | Express 5 | HTTP transport layer |
-| **Deployment** | Manufact MCP Cloud (Fly.io) | Production hosting |
+| Layer | Technology |
+|:------|:-----------|
+| **Language** | TypeScript 5.9 |
+| **Framework** | [Manufact SDK](https://manufact.com) (mcp-use) |
+| **Database** | SQLite via `better-sqlite3` (WAL mode) |
+| **Search** | FTS5 with BM25 + Porter stemming |
+| **Validation** | Zod 4 |
+| **UI** | React 19 + Tailwind CSS v4 |
+| **Build** | Vite 7 |
+| **Server** | Express 5 |
+| **Deployment** | Manufact MCP Cloud (Fly.io) |
 
----
+<br />
 
-## Project Structure
+<details>
+<summary><strong>Project Structure</strong></summary>
+
+<br />
 
 ```
 agent-memory/
@@ -390,65 +377,45 @@ agent-memory/
 ├── src/
 │   ├── db/
 │   │   ├── schema.ts                 # SQLite schema + FTS5 setup
-│   │   ├── queries.ts                # Database CRUD operations
-│   │   └── seed.ts                   # Demo data for testing
+│   │   ├── queries.ts                # Database operations
+│   │   └── seed.ts                   # Demo data
 │   └── tools/
-│       └── helpers.ts                # Agent display names + formatting
+│       └── helpers.ts                # Agent names + formatting
 ├── resources/
 │   └── memory-dashboard/
-│       ├── widget.tsx                # Main interactive dashboard (1,400+ lines)
+│       ├── widget.tsx                # Interactive dashboard (1,400+ lines)
 │       ├── types.ts                  # TypeScript interfaces
-│       ├── utils.ts                  # Agent colors, type colors, helpers
+│       ├── utils.ts                  # Agent colors, helpers
 │       └── components/
-│           ├── MemoryCard.tsx         # Individual memory display
-│           ├── SearchBar.tsx          # Full-text search input
-│           ├── TypeFilter.tsx         # Memory type selector
-│           ├── StatsBar.tsx           # Dashboard statistics
-│           ├── ActivityFeed.tsx       # Agent action timeline
-│           ├── HandoffCard.tsx        # Work handoff display
-│           └── QuickAddForm.tsx       # Quick memory creation form
-├── public/                            # Static assets (favicon, icon)
+│           ├── MemoryCard.tsx         # Memory display
+│           ├── SearchBar.tsx          # FTS5 search input
+│           ├── TypeFilter.tsx         # Type selector
+│           ├── StatsBar.tsx           # Statistics
+│           ├── ActivityFeed.tsx       # Agent timeline
+│           ├── HandoffCard.tsx        # Handoff display
+│           └── QuickAddForm.tsx       # Quick memory creation
+├── public/                            # Static assets
 ├── data/                              # SQLite database (runtime)
-├── docs/                              # Planning and research documents
 └── dist/                              # Compiled output + widget manifest
 ```
 
----
+</details>
 
-## Deploy
+<details>
+<summary><strong>Deploy</strong></summary>
 
-Deploy to Manufact MCP Cloud:
+<br />
 
 ```bash
 npm run build
 npm run deploy
 ```
 
-The server is deployed at `https://winter-meadow-1651f.run.mcp-use.com/mcp` and accessible from any MCP client worldwide.
+Deployed at `https://winter-meadow-1651f.run.mcp-use.com/mcp` — accessible from any MCP client worldwide.
 
----
+</details>
 
-## Token Savings Impact
-
-| Scale | Daily Wasted Tokens | Monthly Waste | With Agent Memory |
-|-------|-------------------|---------------|-------------------|
-| **1 user** | 10,000–20,000 | 300K–600K | Eliminated |
-| **1,000 users** | 10M–20M | 300M–600M | ~60% reduction |
-| **1M users** | 10B–20B | 300B–600B | Billions saved |
-
-Every token saved is a GPU cycle that doesn't fire. At scale, Agent Memory isn't just a productivity tool — it's infrastructure for sustainable AI.
-
----
-
-## The Vision
-
-Agent Memory is built on a simple insight: **AI memory should be universal, persistent, and visible**.
-
-- **Universal** — one memory layer that works across every AI agent
-- **Persistent** — memories survive across conversations, sessions, and tools
-- **Visible** — you can see, search, and manage your memories right inside the conversation
-
-No lock-in. No separate apps. No ML pipelines. Just a single MCP URL that gives every AI agent you use a shared brain.
+<br />
 
 ---
 
@@ -456,12 +423,14 @@ No lock-in. No separate apps. No ML pipelines. Just a single MCP URL that gives 
 
 **Built for the [MCP Apps Hackathon 2026](https://events.ycombinator.com/manufact-hackathon26) at Y Combinator**
 
-Powered by [Manufact](https://manufact.com) · Deployed on [Fly.io](https://fly.io)
+Powered by [Manufact](https://manufact.com)
+
+<br />
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Tailwind](https://img.shields.io/badge/Tailwind-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev)
 
