@@ -46,7 +46,7 @@ const server = new MCPServer({
   title: "Agent Memory",
   version: "1.0.0",
   description: "Shared memory layer for multi-agent collaboration. Store, search, and recall knowledge across AI agents.",
-  baseUrl: process.env.MCP_URL || "http://localhost:3010",
+  baseUrl: process.env.MCP_URL || `http://localhost:${process.env.PORT || "3010"}`,
   favicon: "favicon.ico",
   icons: [
     {
