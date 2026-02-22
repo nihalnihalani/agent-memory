@@ -46,7 +46,7 @@ const server = new MCPServer({
   title: "Agent Memory",
   version: "1.0.0",
   description: "Shared memory layer for multi-agent collaboration. Store, search, and recall knowledge across AI agents.",
-  baseUrl: process.env.MCP_URL || "http://localhost:3000",
+  baseUrl: process.env.MCP_URL || `http://localhost:${process.env.PORT || "3010"}`,
   favicon: "favicon.ico",
   icons: [
     {
@@ -1141,6 +1141,6 @@ server.app.get("/api/health", (c) => {
 // START
 // ========================
 
-const PORT = parseInt(process.env.PORT || "3000");
+const PORT = parseInt(process.env.PORT || "3010");
 console.log(`Agent Memory server starting on port ${PORT}`);
 server.listen(PORT);

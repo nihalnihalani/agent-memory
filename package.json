@@ -22,8 +22,8 @@
   "main": "dist/index.js",
   "scripts": {
     "postinstall": "mcp-use generate-types || true",
-    "build": "mcp-use build",
-    "dev": "mcp-use dev",
+    "build": "mcp-use build --with-inspector",
+    "dev": "mcp-use dev --port 3010",
     "start": "mcp-use start",
     "deploy": "mcp-use deploy"
   },
