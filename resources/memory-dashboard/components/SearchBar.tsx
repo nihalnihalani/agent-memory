@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface SearchBarProps {
   isDark: boolean;
@@ -13,11 +13,34 @@ export default function SearchBar({
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [isFocused, setIsFocused] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     onSearch(query);
   };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (val.trim()) onSearch(val);
+    }, 400);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    onSearch("");
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   return (
     <form
@@ -31,7 +54,7 @@ export default function SearchBar({
         type="text"
         placeholder="Search memories..."
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={handleChange}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         style={{
@@ -40,7 +63,7 @@ export default function SearchBar({
           border: `1px solid ${isFocused ? "#8B5CF6" : isDark ? "#334155" : "#e2e8f0"}`,
           color: isDark ? "#e2e8f0" : "#1e293b",
           fontSize: 12,
-          padding: "8px 36px 8px 12px",
+          padding: "8px 60px 8px 12px",
           borderRadius: 8,
           outline: "none",
           transition: "border-color 0.3s ease, box-shadow 0.3s ease",
@@ -51,8 +74,33 @@ export default function SearchBar({
           boxSizing: "border-box",
         }}
       />
+      {query && (
+        <button
+          type="button"
+          onClick={handleClear}
+          aria-label="Clear search"
+          style={{
+            position: "absolute",
+            right: 44,
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 2,
+            color: isDark ? "#64748b" : "#94a3b8",
+            display: "flex",
+            alignItems: "center",
+            fontSize: 16,
+            lineHeight: 1,
+          }}
+        >
+          &times;
+        </button>
+      )}
       <button
         type="submit"
+        aria-label="Search memories"
         style={{
           position: "absolute",
           right: 20,

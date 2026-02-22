@@ -38,7 +38,9 @@ import { agentDisplayName, relativeTime, truncate, getAgentId } from "./src/tool
 // --- Database initialization ---
 const dbPath = path.resolve(__dirname, "data", "agent-memory.db");
 const db = initializeDatabase(dbPath);
-seedDatabase(db);
+if (!process.env.SKIP_SEED) {
+  seedDatabase(db);
+}
 
 // --- MCP Server ---
 const server = new MCPServer({
@@ -114,6 +116,7 @@ server.tool(
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -230,6 +233,7 @@ server.tool(
     },
     annotations: {
       readOnlyHint: true,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -350,6 +354,7 @@ server.tool(
     annotations: {
       destructiveHint: true,
       readOnlyHint: false,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -413,6 +418,7 @@ server.tool(
     },
     annotations: {
       readOnlyHint: true,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -516,6 +522,7 @@ server.tool(
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -594,6 +601,7 @@ server.tool(
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -696,6 +704,7 @@ server.tool(
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   async (params, ctx) => {
@@ -923,7 +932,7 @@ server.resourceTemplate(
   async (uri: URL, params: Record<string, string>) => {
     const memory = getMemoryByKey(db, params.key);
     if (!memory) {
-      return text(JSON.stringify({ error: "not_found", key: params.key }));
+      return text("Memory not found: " + params.key);
     }
     const tags = getTagsForMemory(db, memory.id);
     return text(JSON.stringify({ ...memory, tags }, null, 2));
