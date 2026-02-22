@@ -2,10 +2,6 @@ import type Database from "better-sqlite3";
 import { upsertMemory } from "./queries.js";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 interface SeedMemory {
   key: string;
@@ -195,7 +191,7 @@ export function seedDatabase(db: Database.Database): void {
     return;
   }
 
-  const seedPath = path.resolve(__dirname, "..", "..", "data", "seed.json");
+  const seedPath = path.resolve(process.cwd(), "data", "seed.json");
   if (!fs.existsSync(seedPath)) {
     console.warn("No seed.json found at", seedPath);
     return;
