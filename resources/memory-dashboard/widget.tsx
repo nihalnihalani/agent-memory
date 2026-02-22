@@ -71,6 +71,7 @@ function MemoryDashboardInner() {
 
   const {
     callTool: callRecall,
+    callToolAsync: recallAsync,
     isPending: isSearching,
   } = useCallTool<{ query: string; limit?: number; tags?: string[] }>("recall");
 
@@ -115,13 +116,31 @@ function MemoryDashboardInner() {
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: string }>>([]);
 
   // ═══════════════════════════════════════════════════════════
-  // Auto-load on mount — callTool("list-memories") on first render
+  // Helper to hydrate state from a tool result's structuredContent
+  // ═══════════════════════════════════════════════════════════
+  const hydrateFromResult = useCallback((result: any) => {
+    const sc = result?.structuredContent;
+    if (!sc) return;
+    if (sc.memories) {
+      setAllMemories(sc.memories);
+      setTotalCount(sc.total ?? sc.memories.length);
+      setHasLoaded(true);
+    }
+    if (sc.activities) {
+      setAllActivities(sc.activities);
+    }
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════
+  // Auto-load on mount — callToolAsync to directly hydrate state
   // ═══════════════════════════════════════════════════════════
   const mountedRef = useRef(false);
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
-      callListMemories({ limit: 50 });
+      listMemoriesAsync({ limit: 50 })
+        .then(hydrateFromResult)
+        .catch(() => {});
     }
   }, []);
 
@@ -186,7 +205,9 @@ function MemoryDashboardInner() {
   useEffect(() => {
     if (!hasLoaded) return;
     const interval = setInterval(() => {
-      callListMemories({ limit: 50 });
+      listMemoriesAsync({ limit: 50 })
+        .then(hydrateFromResult)
+        .catch(() => {});
     }, 15000);
     return () => clearInterval(interval);
   }, [hasLoaded]);
@@ -208,7 +229,9 @@ function MemoryDashboardInner() {
 
   const handleSearch = async (query: string) => {
     await setState((prev: any) => ({ ...prev, searchQuery: query }));
-    callRecall({ query, limit: 20 });
+    recallAsync({ query, limit: 20 })
+      .then(hydrateFromResult)
+      .catch(() => {});
   };
 
   const handleDelete = async (key: string) => {
@@ -221,7 +244,7 @@ function MemoryDashboardInner() {
       await forgetAsync({ key });
     } catch {
       // Revert on failure — refresh full list
-      callListMemories({ limit: 50 });
+      listMemoriesAsync({ limit: 50 }).then(hydrateFromResult).catch(() => {});
       setDeletingKey(null);
       addToast(`Failed to delete "${key}"`, "error");
     }
@@ -229,8 +252,8 @@ function MemoryDashboardInner() {
 
   const handleTypeFilter = async (type: string | null) => {
     await setState((prev: any) => ({ ...prev, typeFilter: type }));
-    if (type) callListMemories({ type, limit: 50 });
-    else callListMemories({ limit: 50 });
+    const args = type ? { type, limit: 50 } : { limit: 50 };
+    listMemoriesAsync(args).then(hydrateFromResult).catch(() => {});
   };
 
   const handleTabSwitch = async (tab: string) => {
@@ -242,12 +265,19 @@ function MemoryDashboardInner() {
   };
 
   const handleQuickAdd = async (key: string, value: string, type: string) => {
-    callRemember({ key, value, type }, {
-      onSuccess: () => {
-        setState((prev: any) => ({ ...prev, showAddForm: false }));
-      },
-      onError: () => addToast("Failed to store memory", "error"),
-    });
+    try {
+      const result = await rememberAsync({ key, value, type });
+      const sc = result?.structuredContent;
+      if (sc?.action === "created" && sc?.memory) {
+        const mem = sc.memory as Memory;
+        setAllMemories(prev => [mem, ...prev.filter(m => m.id !== mem.id)]);
+        setTotalCount(prev => prev + 1);
+        addToast(`Stored "${mem.key}"`, "success");
+      }
+      setState((prev: any) => ({ ...prev, showAddForm: false }));
+    } catch {
+      addToast("Failed to store memory", "error");
+    }
   };
 
   const handlePickup = async (handoffId: number) => {
@@ -257,7 +287,7 @@ function MemoryDashboardInner() {
   };
 
   const handleRefresh = () => {
-    callListMemories({ limit: 50 });
+    listMemoriesAsync({ limit: 50 }).then(hydrateFromResult).catch(() => {});
     addToast("Refreshing...", "info");
   };
 
