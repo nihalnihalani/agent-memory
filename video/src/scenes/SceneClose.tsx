@@ -21,14 +21,8 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Logo entrance
-  const logoSpring = spring({
-    frame,
-    fps,
-    config: { damping: 15 },
-  });
+  const logoSpring = spring({ frame, fps, config: { damping: 15 } });
 
-  // Title typewriter
   const title = "Agent Memory";
   const titleChars = Math.round(
     interpolate(frame, [0.5 * fps, 1.5 * fps], [0, title.length], {
@@ -37,27 +31,23 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
     })
   );
 
-  // Tagline
   const taglineOpacity = interpolate(frame, [1.8 * fps, 2.3 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const taglineY = interpolate(frame, [1.8 * fps, 2.3 * fps], [15, 0], {
+  const taglineY = interpolate(frame, [1.8 * fps, 2.3 * fps], [30, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.quad),
   });
 
-  // Hackathon badge
   const badgeOpacity = interpolate(frame, [2.5 * fps, 3 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Sponsors row
   const sponsorStart = 3 * fps;
 
-  // "The demo begins" CTA
   const demoOpacity = interpolate(frame, [3.8 * fps, 4.3 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -67,10 +57,8 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
     fps,
     config: { damping: 12, stiffness: 150 },
   });
-  // Blinking cursor after "the demo begins"
   const cursorVisible = frame % fps < fps * 0.6;
 
-  // Breathing glow on logo
   const glow = interpolate(
     frame % (2 * fps),
     [0, fps, 2 * fps],
@@ -98,20 +86,15 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
           justifyContent: "center",
         }}
       >
-        {/* Logo with breathing glow */}
+        {/* Logo */}
         <div
           style={{
             transform: `scale(${logoSpring})`,
-            marginBottom: 20,
+            marginBottom: 40,
           }}
         >
-          <svg width="110" height="110" viewBox="0 0 120 120" fill="none">
-            <circle
-              cx="60"
-              cy="60"
-              r="40"
-              fill={`rgba(139, 92, 246, ${glow})`}
-            />
+          <svg width="220" height="220" viewBox="0 0 120 120" fill="none">
+            <circle cx="60" cy="60" r="40" fill={`rgba(139, 92, 246, ${glow})`} />
             <circle cx="60" cy="60" r="20" fill="#8B5CF6" opacity="0.9" />
             <line x1="60" y1="60" x2="25" y2="30" stroke="#3B82F6" strokeWidth="2" opacity="0.6" />
             <line x1="60" y1="60" x2="95" y2="30" stroke="#10B981" strokeWidth="2" opacity="0.6" />
@@ -125,14 +108,14 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
           </svg>
         </div>
 
-        {/* Title with typewriter */}
+        {/* Title typewriter */}
         <div
           style={{
             fontFamily,
-            fontSize: 80,
+            fontSize: 160,
             fontWeight: 800,
             color: "#ffffff",
-            letterSpacing: "-3px",
+            letterSpacing: "-6px",
             textAlign: "center",
             lineHeight: 1,
           }}
@@ -156,9 +139,9 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
             opacity: taglineOpacity,
             transform: `translateY(${taglineY}px)`,
             fontFamily,
-            fontSize: 32,
+            fontSize: 64,
             color: "#94a3b8",
-            marginTop: 12,
+            marginTop: 24,
             fontWeight: 500,
           }}
         >
@@ -169,23 +152,23 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
         <div
           style={{
             opacity: badgeOpacity,
-            marginTop: 36,
+            marginTop: 72,
             display: "flex",
             alignItems: "center",
-            gap: 16,
+            gap: 32,
           }}
         >
           <div
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 6,
+              width: 72,
+              height: 72,
+              borderRadius: 12,
               background: "#FB651E",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontFamily,
-              fontSize: 20,
+              fontSize: 40,
               fontWeight: 800,
               color: "white",
             }}
@@ -195,7 +178,7 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
           <div
             style={{
               fontFamily,
-              fontSize: 20,
+              fontSize: 40,
               color: "#e2e8f0",
               fontWeight: 600,
             }}
@@ -205,7 +188,7 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
           <div
             style={{
               fontFamily,
-              fontSize: 14,
+              fontSize: 28,
               color: "#64748b",
               fontWeight: 500,
             }}
@@ -214,18 +197,18 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
           </div>
         </div>
 
-        {/* "The demo begins" CTA */}
+        {/* "The demo begins" */}
         <div
           style={{
             opacity: demoOpacity,
             transform: `scale(${Math.max(demoScale, 0)})`,
-            marginTop: 48,
+            marginTop: 96,
             fontFamily,
-            fontSize: 44,
+            fontSize: 88,
             fontWeight: 700,
             color: "#8B5CF6",
             textAlign: "center",
-            letterSpacing: "-1px",
+            letterSpacing: "-2px",
           }}
         >
           The demo begins
@@ -233,7 +216,7 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
             style={{
               opacity: cursorVisible ? 1 : 0,
               color: "#a78bfa",
-              marginLeft: 2,
+              marginLeft: 4,
             }}
           >
             _
@@ -245,12 +228,12 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
       <div
         style={{
           position: "absolute",
-          bottom: 80,
+          bottom: 160,
           left: 0,
           right: 0,
           display: "flex",
           justifyContent: "center",
-          gap: 48,
+          gap: 96,
           alignItems: "center",
         }}
       >
@@ -267,11 +250,11 @@ export const SceneClose: React.FC<Props> = ({ fontFamily }) => {
               key={s.name}
               style={{
                 fontFamily,
-                fontSize: 18,
+                fontSize: 36,
                 fontWeight: 700,
                 color: s.color,
                 opacity: sOpacity,
-                letterSpacing: "0.5px",
+                letterSpacing: "1px",
               }}
             >
               {s.name}
