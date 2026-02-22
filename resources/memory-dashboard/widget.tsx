@@ -11,44 +11,59 @@ import ActivityFeed from "./components/ActivityFeed";
 import QuickAddForm from "./components/QuickAddForm";
 import { getAgentName, getAgentColor } from "./utils";
 
+const memorySchema = z.object({
+  id: z.number(),
+  key: z.string(),
+  value: z.string(),
+  type: z.string(),
+  context: z.string().nullable(),
+  agent_id: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  access_count: z.number(),
+  tags: z.array(z.string()),
+});
+
+const activitySchema = z.object({
+  id: z.number(),
+  agent_id: z.string(),
+  action: z.string(),
+  target_key: z.string().nullable(),
+  detail: z.string().nullable(),
+  created_at: z.string(),
+});
+
+const handoffSchema = z.object({
+  id: z.number(),
+  from_agent: z.string(),
+  to_agent: z.string().nullable(),
+  status: z.string(),
+  summary: z.string(),
+  stuck_reason: z.string().nullable(),
+  next_steps: z.string(),
+  context_keys: z.array(z.string()),
+  picked_up_by: z.string().nullable(),
+  created_at: z.string(),
+  picked_up_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+});
+
+const propsSchema = z.object({
+  memories: z.array(memorySchema).optional().default([]),
+  activities: z.array(activitySchema).optional(),
+  total: z.number().optional().default(0),
+  query: z.string().optional(),
+  action: z.string().optional(),
+  memory: memorySchema.optional(),
+  handoff: handoffSchema.optional(),
+  contextMemories: z.array(memorySchema).optional(),
+  decisions: z.array(memorySchema).optional(),
+  preferences: z.array(memorySchema).optional(),
+});
+
 export const widgetMetadata: WidgetMetadata = {
   description: "Interactive agent memory dashboard with search, filtering, and AI analysis",
-  props: z.object({
-    memories: z.array(
-      z.object({
-        id: z.number(),
-        key: z.string(),
-        value: z.string(),
-        type: z.string(),
-        context: z.string().nullable(),
-        agent_id: z.string().nullable(),
-        created_at: z.string(),
-        updated_at: z.string(),
-        access_count: z.number(),
-        tags: z.array(z.string()),
-      }),
-    ).optional().default([]),
-    activities: z
-      .array(
-        z.object({
-          id: z.number(),
-          agent_id: z.string(),
-          action: z.string(),
-          target_key: z.string().nullable(),
-          detail: z.string().nullable(),
-          created_at: z.string(),
-        }),
-      )
-      .optional(),
-    total: z.number().optional().default(0),
-    query: z.string().optional(),
-    action: z.string().optional(),
-    memory: z.any().optional(),
-    handoff: z.any().optional(),
-    contextMemories: z.array(z.any()).optional(),
-    decisions: z.array(z.any()).optional(),
-    preferences: z.array(z.any()).optional(),
-  }),
+  props: propsSchema,
 };
 
 function MemoryDashboardInner() {
@@ -149,7 +164,7 @@ function MemoryDashboardInner() {
   // ═══════════════════════════════════════════════════════════
   useEffect(() => {
     if (!props) return;
-    const p = props as unknown as WidgetProps;
+    const p = props as WidgetProps;
 
     // Full list updates (from list-memories or recall)
     if (p.memories && p.memories.length > 0) {
@@ -538,7 +553,7 @@ function MemoryDashboardInner() {
     );
   }
 
-  const p = props as unknown as WidgetProps;
+  const p = props as WidgetProps;
 
   return (
     <div style={containerStyle}>
