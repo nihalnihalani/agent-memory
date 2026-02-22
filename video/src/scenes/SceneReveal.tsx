@@ -10,98 +10,123 @@ import {
 type Props = { fontFamily: string };
 
 const TAGS = [
-  { label: "decisions", color: "#3B82F6", x: -340, y: -60 },
-  { label: "preferences", color: "#8B5CF6", x: 260, y: -50 },
-  { label: "snippets", color: "#10B981", x: -300, y: 60 },
-  { label: "handoffs", color: "#F59E0B", x: 280, y: 50 },
-  { label: "context", color: "#EC4899", x: -20, y: 100 },
+  { label: "decisions", color: "#3B82F6", emoji: "\u2696\uFE0F" },
+  { label: "preferences", color: "#8B5CF6", emoji: "\u2699\uFE0F" },
+  { label: "snippets", color: "#10B981", emoji: "\u{1F4CB}" },
+  { label: "handoffs", color: "#F59E0B", emoji: "\u{1F91D}" },
+  { label: "context", color: "#EC4899", emoji: "\u{1F9E0}" },
 ];
 
 export const SceneReveal: React.FC<Props> = ({ fontFamily }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Logo entrance with spring
-  const logoScale = spring({ frame, fps, config: { damping: 12 } });
-  const logoOpacity = interpolate(frame, [0, 0.5 * fps], [0, 1], {
+  // === Phase 1: Icon drops in (0–0.8s) ===
+  const iconDrop = spring({ frame, fps, config: { damping: 14, stiffness: 120 } });
+  const iconOpacity = interpolate(frame, [0, 0.4 * fps], [0, 1], {
     extrapolateRight: "clamp",
   });
 
-  // Pulsing rings (centered on the icon)
-  const ring1Scale = interpolate(frame, [0.5 * fps, 3 * fps], [0.5, 3], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const ring1Opacity = interpolate(frame, [0.5 * fps, 3 * fps], [0.5, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const ring2Scale = interpolate(frame, [1 * fps, 4 * fps], [0.5, 3], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const ring2Opacity = interpolate(frame, [1 * fps, 4 * fps], [0.5, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Title text
-  const titleOpacity = interpolate(frame, [1 * fps, 1.5 * fps], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const titleY = interpolate(frame, [1 * fps, 1.5 * fps], [20, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: Easing.out(Easing.quad),
-  });
-
-  // Subtitle
-  const subOpacity = interpolate(frame, [1.8 * fps, 2.3 * fps], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Token savings stat
-  const savingsOpacity = interpolate(frame, [3.2 * fps, 3.8 * fps], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const savingsScale = spring({
-    frame: Math.max(0, frame - 3.2 * fps),
+  // === Phase 2: Title + subtitle (0.6–1.8s) ===
+  const titleProgress = spring({
+    frame: Math.max(0, frame - 0.6 * fps),
     fps,
-    config: { damping: 12, stiffness: 200 },
+    config: { damping: 20, stiffness: 100 },
   });
+  const titleOpacity = interpolate(frame, [0.6 * fps, 1 * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const subOpacity = interpolate(frame, [1.2 * fps, 1.7 * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // === Phase 3: Tags fly in from edges (2–3.5s) ===
+  // Tags are placed in a row below the subtitle
+
+  // === Phase 4: Savings badge (3.5–5s) ===
+  const savingsOpacity = interpolate(frame, [3.5 * fps, 4 * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const savingsSpring = spring({
+    frame: Math.max(0, frame - 3.5 * fps),
+    fps,
+    config: { damping: 12, stiffness: 180 },
+  });
+
+  // === Background glow pulse ===
+  const glowSize = interpolate(
+    frame,
+    [0, 1 * fps, 3 * fps, 5 * fps],
+    [200, 400, 500, 550],
+    { extrapolateRight: "clamp" }
+  );
+  const glowOpacity = interpolate(
+    frame,
+    [0, 0.5 * fps, 4 * fps],
+    [0, 0.25, 0.15],
+    { extrapolateRight: "clamp" }
+  );
+
+  // === Pulsing rings from icon center ===
+  const makeRing = (startSec: number) => {
+    const start = startSec * fps;
+    const end = start + 2.5 * fps;
+    return {
+      scale: interpolate(frame, [start, end], [0.3, 4], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      }),
+      opacity: interpolate(frame, [start, end], [0.6, 0], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      }),
+    };
+  };
+  const rings = [makeRing(0.3), makeRing(1.0), makeRing(1.7)];
 
   return (
     <AbsoluteFill
       style={{
-        background:
-          "radial-gradient(ellipse at 50% 40%, #1b1040 0%, #0d1117 70%)",
+        background: "#0d1117",
       }}
     >
-      {/* Pulsing rings — centered at 50%, 38% (where the icon is) */}
-      {[
-        { scale: ring1Scale, opacity: ring1Opacity },
-        { scale: ring2Scale, opacity: ring2Opacity },
-      ].map((ring, i) => (
+      {/* Radial glow behind icon */}
+      <div
+        style={{
+          position: "absolute",
+          top: "28%",
+          left: "50%",
+          width: glowSize,
+          height: glowSize,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(139,92,246,0.4) 0%, rgba(139,92,246,0) 70%)",
+          transform: "translate(-50%, -50%)",
+          opacity: glowOpacity,
+        }}
+      />
+
+      {/* Pulsing rings */}
+      {rings.map((ring, i) => (
         <div
           key={i}
           style={{
             position: "absolute",
-            width: 160,
-            height: 160,
+            top: "28%",
+            left: "50%",
+            width: 120,
+            height: 120,
             borderRadius: "50%",
-            border: "2px solid rgba(139, 92, 246, 0.5)",
+            border: "1.5px solid rgba(139, 92, 246, 0.6)",
             transform: `translate(-50%, -50%) scale(${ring.scale})`,
             opacity: ring.opacity,
-            top: "38%",
-            left: "50%",
           }}
         />
       ))}
 
-      {/* Center column: icon → title → subtitle → badge */}
+      {/* === Main content column === */}
       <div
         style={{
           position: "absolute",
@@ -112,29 +137,43 @@ export const SceneReveal: React.FC<Props> = ({ fontFamily }) => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "flex-start",
+          paddingTop: 140,
         }}
       >
-        {/* Brain/Memory Icon */}
+        {/* Brain/Network Icon — large and prominent */}
         <div
           style={{
-            transform: `scale(${logoScale})`,
-            opacity: logoOpacity,
-            marginBottom: 28,
+            transform: `scale(${iconDrop}) translateY(${interpolate(iconDrop, [0, 1], [-30, 0])}px)`,
+            opacity: iconOpacity,
+            marginBottom: 44,
           }}
         >
-          <svg width="140" height="140" viewBox="0 0 120 120" fill="none">
-            <circle cx="60" cy="60" r="20" fill="#8B5CF6" opacity="0.9" />
-            <circle cx="60" cy="60" r="28" stroke="#8B5CF6" strokeWidth="2" opacity="0.4" />
-            <line x1="60" y1="60" x2="25" y2="30" stroke="#3B82F6" strokeWidth="2" opacity="0.6" />
-            <line x1="60" y1="60" x2="95" y2="30" stroke="#10B981" strokeWidth="2" opacity="0.6" />
-            <line x1="60" y1="60" x2="25" y2="90" stroke="#F59E0B" strokeWidth="2" opacity="0.6" />
-            <line x1="60" y1="60" x2="95" y2="90" stroke="#EC4899" strokeWidth="2" opacity="0.6" />
-            <circle cx="25" cy="30" r="8" fill="#3B82F6" />
-            <circle cx="95" cy="30" r="8" fill="#10B981" />
-            <circle cx="25" cy="90" r="8" fill="#F59E0B" />
-            <circle cx="95" cy="90" r="8" fill="#EC4899" />
-            <circle cx="60" cy="60" r="12" fill="white" opacity="0.3" />
+          <svg width="180" height="180" viewBox="0 0 120 120" fill="none">
+            {/* Outer glow ring */}
+            <circle cx="60" cy="60" r="50" stroke="#8B5CF6" strokeWidth="1" opacity="0.15" />
+            <circle cx="60" cy="60" r="38" stroke="#8B5CF6" strokeWidth="1.5" opacity="0.25" />
+            {/* Connection lines */}
+            <line x1="60" y1="60" x2="22" y2="28" stroke="#3B82F6" strokeWidth="2.5" opacity="0.5" />
+            <line x1="60" y1="60" x2="98" y2="28" stroke="#10B981" strokeWidth="2.5" opacity="0.5" />
+            <line x1="60" y1="60" x2="22" y2="92" stroke="#F59E0B" strokeWidth="2.5" opacity="0.5" />
+            <line x1="60" y1="60" x2="98" y2="92" stroke="#EC4899" strokeWidth="2.5" opacity="0.5" />
+            <line x1="60" y1="60" x2="60" y2="15" stroke="#06B6D4" strokeWidth="2.5" opacity="0.5" />
+            {/* Central node */}
+            <circle cx="60" cy="60" r="22" fill="#8B5CF6" />
+            <circle cx="60" cy="60" r="14" fill="#a78bfa" opacity="0.5" />
+            <circle cx="60" cy="60" r="8" fill="white" opacity="0.35" />
+            {/* Outer nodes */}
+            <circle cx="22" cy="28" r="10" fill="#3B82F6" />
+            <circle cx="98" cy="28" r="10" fill="#10B981" />
+            <circle cx="22" cy="92" r="10" fill="#F59E0B" />
+            <circle cx="98" cy="92" r="10" fill="#EC4899" />
+            <circle cx="60" cy="15" r="8" fill="#06B6D4" />
+            {/* Inner dots on outer nodes */}
+            <circle cx="22" cy="28" r="4" fill="white" opacity="0.3" />
+            <circle cx="98" cy="28" r="4" fill="white" opacity="0.3" />
+            <circle cx="22" cy="92" r="4" fill="white" opacity="0.3" />
+            <circle cx="98" cy="92" r="4" fill="white" opacity="0.3" />
           </svg>
         </div>
 
@@ -142,53 +181,117 @@ export const SceneReveal: React.FC<Props> = ({ fontFamily }) => {
         <div
           style={{
             opacity: titleOpacity,
-            transform: `translateY(${titleY}px)`,
+            transform: `translateY(${interpolate(titleProgress, [0, 1], [25, 0])}px)`,
             fontFamily,
-            fontSize: 76,
+            fontSize: 84,
             fontWeight: 800,
             color: "#ffffff",
             textAlign: "center",
-            letterSpacing: "-2px",
+            letterSpacing: "-3px",
             lineHeight: 1,
           }}
         >
           Agent Memory
         </div>
 
+        {/* Accent line under title */}
+        <div
+          style={{
+            width: interpolate(frame, [1 * fps, 1.5 * fps], [0, 200], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+              easing: Easing.out(Easing.quad),
+            }),
+            height: 3,
+            background: "linear-gradient(90deg, #8B5CF6, #3B82F6, #10B981)",
+            borderRadius: 2,
+            marginTop: 16,
+            marginBottom: 16,
+          }}
+        />
+
         {/* Subtitle */}
         <div
           style={{
             opacity: subOpacity,
             fontFamily,
-            fontSize: 30,
+            fontSize: 32,
             color: "#94a3b8",
             textAlign: "center",
-            marginTop: 16,
             fontWeight: 500,
+            letterSpacing: "0.5px",
           }}
         >
           The shared brain for AI agents
+        </div>
+
+        {/* Tags row — clean horizontal chips */}
+        <div
+          style={{
+            display: "flex",
+            gap: 14,
+            marginTop: 48,
+            flexWrap: "nowrap",
+          }}
+        >
+          {TAGS.map((tag, i) => {
+            const tagDelay = 2 * fps + i * 0.15 * fps;
+            const tagSpring = spring({
+              frame: Math.max(0, frame - tagDelay),
+              fps,
+              config: { damping: 14, stiffness: 160 },
+            });
+            const tagOpacity = interpolate(
+              frame,
+              [tagDelay, tagDelay + 0.25 * fps],
+              [0, 1],
+              { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+            );
+            return (
+              <div
+                key={tag.label}
+                style={{
+                  opacity: tagOpacity,
+                  transform: `scale(${tagSpring}) translateY(${interpolate(tagSpring, [0, 1], [12, 0])}px)`,
+                  fontFamily,
+                  fontSize: 17,
+                  fontWeight: 600,
+                  color: tag.color,
+                  background: `${tag.color}14`,
+                  border: `1px solid ${tag.color}33`,
+                  padding: "8px 20px",
+                  borderRadius: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 15 }}>{tag.emoji}</span>
+                {tag.label}
+              </div>
+            );
+          })}
         </div>
 
         {/* Token savings badge */}
         <div
           style={{
             opacity: savingsOpacity,
-            transform: `scale(${Math.max(savingsScale, 0)})`,
-            marginTop: 40,
-            background: "linear-gradient(135deg, #10B98122, #10B98108)",
-            border: "1px solid #10B98144",
-            borderRadius: 14,
-            padding: "14px 32px",
+            transform: `scale(${Math.max(savingsSpring, 0)})`,
+            marginTop: 52,
+            background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))",
+            border: "1.5px solid rgba(16,185,129,0.3)",
+            borderRadius: 16,
+            padding: "16px 40px",
             display: "flex",
             alignItems: "center",
-            gap: 14,
+            gap: 16,
           }}
         >
           <div
             style={{
               fontFamily,
-              fontSize: 40,
+              fontSize: 48,
               fontWeight: 800,
               color: "#10B981",
               lineHeight: 1,
@@ -198,54 +301,34 @@ export const SceneReveal: React.FC<Props> = ({ fontFamily }) => {
           </div>
           <div
             style={{
-              fontFamily,
-              fontSize: 20,
-              color: "#94a3b8",
-              fontWeight: 500,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
             }}
           >
-            fewer tokens wasted
+            <div
+              style={{
+                fontFamily,
+                fontSize: 20,
+                color: "#e2e8f0",
+                fontWeight: 600,
+              }}
+            >
+              fewer tokens wasted
+            </div>
+            <div
+              style={{
+                fontFamily,
+                fontSize: 14,
+                color: "#64748b",
+                fontWeight: 400,
+              }}
+            >
+              agents recall what they already know
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Floating tags — positioned relative to center */}
-      {TAGS.map((tag, i) => {
-        const tagDelay = 2 * fps + i * 6;
-        const tagSpring = spring({
-          frame: Math.max(0, frame - tagDelay),
-          fps,
-          config: { damping: 15 },
-        });
-        const tagOpacity = interpolate(
-          frame,
-          [tagDelay, tagDelay + 0.3 * fps],
-          [0, 0.85],
-          { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-        );
-        return (
-          <div
-            key={tag.label}
-            style={{
-              position: "absolute",
-              left: `calc(50% + ${tag.x}px)`,
-              top: `calc(50% + ${tag.y}px)`,
-              opacity: tagOpacity,
-              transform: `scale(${tagSpring})`,
-              fontFamily,
-              fontSize: 16,
-              fontWeight: 600,
-              color: tag.color,
-              background: `${tag.color}18`,
-              border: `1px solid ${tag.color}44`,
-              padding: "6px 16px",
-              borderRadius: 20,
-            }}
-          >
-            {tag.label}
-          </div>
-        );
-      })}
     </AbsoluteFill>
   );
 };
