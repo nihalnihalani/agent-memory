@@ -13,12 +13,14 @@ interface TypeFilterProps {
   activeType: string | null;
   isDark: boolean;
   onFilter: (type: string | null) => void;
+  counts?: Record<string, number>;
 }
 
 export default function TypeFilter({
   activeType,
   isDark,
   onFilter,
+  counts,
 }: TypeFilterProps) {
   return (
     <div
@@ -35,6 +37,8 @@ export default function TypeFilter({
         const isActive =
           (t.value === null && activeType === null) ||
           t.value === activeType;
+        const count = t.value && counts ? counts[t.value] : undefined;
+        const label = count !== undefined ? `${t.label} (${count})` : t.label;
         return (
           <button
             key={t.label}
@@ -67,7 +71,7 @@ export default function TypeFilter({
               whiteSpace: "nowrap",
             }}
           >
-            {t.label}
+            {label}
           </button>
         );
       })}

@@ -34,8 +34,6 @@ Open [http://localhost:3000/inspector](http://localhost:3000/inspector) to test 
 | `memory://{key}` | Lookup a specific memory by key |
 | `memory://handoff-queue` | Pending handoffs for pickup |
 | `memory://changelog` | Recent memory changes |
-| `memory://dashboard` | Interactive memory dashboard widget |
-| `memory://dashboard-dynamic` | Dynamic dashboard with context props |
 
 ## Prompts
 

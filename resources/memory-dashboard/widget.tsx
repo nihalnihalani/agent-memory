@@ -67,28 +67,28 @@ function MemoryDashboardInner() {
     callTool: callListMemories,
     callToolAsync: listMemoriesAsync,
     isPending: isListingMemories,
-  } = useCallTool("list-memories");
+  } = useCallTool<{ limit?: number; type?: string; tags?: string[]; offset?: number }>("list-memories");
 
   const {
     callTool: callRecall,
     isPending: isSearching,
-  } = useCallTool("recall");
+  } = useCallTool<{ query: string; limit?: number; tags?: string[] }>("recall");
 
   const {
     callTool: callRemember,
     callToolAsync: rememberAsync,
     isPending: isRemembering,
-  } = useCallTool("remember");
+  } = useCallTool<{ key: string; value: string; type?: string; tags?: string[]; context?: string }>("remember");
 
   const {
     callToolAsync: forgetAsync,
     isPending: isForgetting,
-  } = useCallTool("forget");
+  } = useCallTool<{ key: string }>("forget");
 
   const {
     callTool: callPickup,
     isPending: isPickingUp,
-  } = useCallTool("pickup");
+  } = useCallTool<{ handoff_id?: number }>("pickup");
 
   // ═══════════════════════════════════════════════════════════
   // setState() — persistent widget state across interactions
@@ -662,6 +662,10 @@ function MemoryDashboardInner() {
           activeType={typeFilter}
           isDark={isDark}
           onFilter={handleTypeFilter}
+          counts={allMemories.reduce((acc, m) => {
+            acc[m.type] = (acc[m.type] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)}
         />
         <div style={{ flex: 1 }} />
 
