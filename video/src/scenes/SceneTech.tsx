@@ -30,7 +30,6 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Eco message
   const ecoOpacity = interpolate(frame, [3.5 * fps, 4 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -46,14 +45,10 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
       }}
     >
       {/* Center hub */}
-      <div style={{ position: "relative", width: 700, height: 500 }}>
-        {/* Central MCP Server node */}
+      <div style={{ position: "relative", width: 1400, height: 1000 }}>
+        {/* Central MCP node */}
         {(() => {
-          const hubSpring = spring({
-            frame,
-            fps,
-            config: { damping: 15 },
-          });
+          const hubSpring = spring({ frame, fps, config: { damping: 15 } });
           return (
             <div
               style={{
@@ -61,12 +56,12 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
                 left: "50%",
                 top: "50%",
                 transform: `translate(-50%, -50%) scale(${hubSpring})`,
-                width: 160,
-                height: 160,
+                width: 320,
+                height: 320,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle, rgba(139,92,246,0.3) 0%, rgba(139,92,246,0.05) 70%)",
-                border: "2px solid rgba(139,92,246,0.5)",
+                border: "4px solid rgba(139,92,246,0.5)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -76,7 +71,7 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
               <div
                 style={{
                   fontFamily,
-                  fontSize: 16,
+                  fontSize: 32,
                   fontWeight: 700,
                   color: "#a78bfa",
                 }}
@@ -86,7 +81,7 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
               <div
                 style={{
                   fontFamily,
-                  fontSize: 13,
+                  fontSize: 26,
                   color: "#8b5cf6",
                   fontWeight: 600,
                 }}
@@ -97,12 +92,12 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
           );
         })()}
 
-        {/* Tool nodes arranged in a circle */}
+        {/* Tool nodes */}
         {TOOLS.map((tool, i) => {
           const angle = (i / TOOLS.length) * 2 * Math.PI - Math.PI / 2;
-          const radius = 210;
-          const x = 350 + Math.cos(angle) * radius;
-          const y = 250 + Math.sin(angle) * radius;
+          const radius = 420;
+          const x = 700 + Math.cos(angle) * radius;
+          const y = 500 + Math.sin(angle) * radius;
 
           const toolDelay = 0.5 * fps + i * 5;
           const toolSpring = spring({
@@ -119,41 +114,38 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
 
           return (
             <div key={tool.name}>
-              {/* Connection line */}
               <svg
                 style={{
                   position: "absolute",
                   left: 0,
                   top: 0,
-                  width: 700,
-                  height: 500,
+                  width: 1400,
+                  height: 1000,
                   pointerEvents: "none",
                 }}
               >
                 <line
-                  x1={350}
-                  y1={250}
+                  x1={700}
+                  y1={500}
                   x2={x}
                   y2={y}
                   stroke={tool.color}
-                  strokeWidth={2}
+                  strokeWidth={4}
                   opacity={lineOpacity}
                 />
               </svg>
-
-              {/* Tool node */}
               <div
                 style={{
                   position: "absolute",
-                  left: x - 44,
-                  top: y - 22,
+                  left: x - 88,
+                  top: y - 44,
                   transform: `scale(${toolSpring})`,
                   background: `${tool.color}22`,
-                  border: `1px solid ${tool.color}66`,
-                  borderRadius: 10,
-                  padding: "8px 16px",
+                  border: `2px solid ${tool.color}66`,
+                  borderRadius: 20,
+                  padding: "16px 32px",
                   fontFamily: monoFamily,
-                  fontSize: 13,
+                  fontSize: 26,
                   fontWeight: 700,
                   color: tool.color,
                   whiteSpace: "nowrap",
@@ -171,9 +163,9 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
       <div
         style={{
           position: "absolute",
-          top: 70,
+          top: 140,
           display: "flex",
-          gap: 60,
+          gap: 120,
           alignItems: "center",
         }}
       >
@@ -199,7 +191,7 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
               <div
                 style={{
                   fontFamily,
-                  fontSize: 56,
+                  fontSize: 112,
                   fontWeight: 800,
                   color: "#e2e8f0",
                   lineHeight: 1,
@@ -210,7 +202,7 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
               <div
                 style={{
                   fontFamily,
-                  fontSize: 18,
+                  fontSize: 36,
                   color: "#64748b",
                   fontWeight: 600,
                 }}
@@ -226,9 +218,9 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
       <div
         style={{
           position: "absolute",
-          bottom: 100,
+          bottom: 200,
           display: "flex",
-          gap: 16,
+          gap: 32,
         }}
       >
         {TECH_BADGES.map((badge, i) => {
@@ -245,13 +237,13 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
               style={{
                 opacity: badgeOpacity,
                 fontFamily,
-                fontSize: 15,
+                fontSize: 30,
                 fontWeight: 600,
                 color: "#94a3b8",
                 background: "rgba(30,41,59,0.8)",
-                border: "1px solid rgba(51,65,85,0.5)",
-                borderRadius: 8,
-                padding: "8px 20px",
+                border: "2px solid rgba(51,65,85,0.5)",
+                borderRadius: 16,
+                padding: "16px 40px",
               }}
             >
               {badge.label}
@@ -264,10 +256,10 @@ export const SceneTech: React.FC<Props> = ({ fontFamily, monoFamily }) => {
       <div
         style={{
           position: "absolute",
-          bottom: 40,
+          bottom: 80,
           opacity: ecoOpacity,
           fontFamily,
-          fontSize: 16,
+          fontSize: 32,
           color: "#10B981",
           fontWeight: 500,
         }}

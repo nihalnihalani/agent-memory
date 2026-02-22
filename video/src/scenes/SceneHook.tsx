@@ -13,40 +13,35 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Pulsing grid background
   const gridOpacity = interpolate(frame, [0, fps], [0, 0.08], {
     extrapolateRight: "clamp",
   });
 
-  // Line 1: "Your AI agents have amnesia."
   const line1Opacity = interpolate(frame, [0.3 * fps, 1 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const line1Y = interpolate(frame, [0.3 * fps, 1 * fps], [30, 0], {
+  const line1Y = interpolate(frame, [0.3 * fps, 1 * fps], [60, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.quad),
   });
 
-  // Line 2: "Every session starts from zero."
   const line2Opacity = interpolate(frame, [1.5 * fps, 2.2 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const line2Y = interpolate(frame, [1.5 * fps, 2.2 * fps], [30, 0], {
+  const line2Y = interpolate(frame, [1.5 * fps, 2.2 * fps], [60, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.quad),
   });
 
-  // Token waste stats
   const statsOpacity = interpolate(frame, [2.5 * fps, 3 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Wasted tokens counter
   const wastedTokens = Math.round(
     interpolate(frame, [2.5 * fps, 4 * fps], [0, 20000], {
       extrapolateLeft: "clamp",
@@ -55,7 +50,6 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
     })
   );
 
-  // Red pulse on "wasted"
   const redPulse = interpolate(
     frame % (fps / 2),
     [0, fps / 4, fps / 2],
@@ -72,7 +66,6 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
         alignItems: "center",
       }}
     >
-      {/* Animated grid */}
       <AbsoluteFill
         style={{
           opacity: gridOpacity,
@@ -80,7 +73,7 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
             linear-gradient(rgba(139,92,246,0.3) 1px, transparent 1px),
             linear-gradient(90deg, rgba(139,92,246,0.3) 1px, transparent 1px)
           `,
-          backgroundSize: "60px 60px",
+          backgroundSize: "120px 120px",
         }}
       />
 
@@ -89,21 +82,20 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 24,
-          padding: "0 120px",
+          gap: 48,
+          padding: "0 240px",
         }}
       >
-        {/* Main headline */}
         <div
           style={{
             opacity: line1Opacity,
             transform: `translateY(${line1Y}px)`,
             fontFamily,
-            fontSize: 64,
+            fontSize: 128,
             fontWeight: 800,
             color: "#e2e8f0",
             textAlign: "center",
-            letterSpacing: "-1px",
+            letterSpacing: "-2px",
           }}
         >
           Your AI agents have{" "}
@@ -115,7 +107,7 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
             opacity: line2Opacity,
             transform: `translateY(${line2Y}px)`,
             fontFamily,
-            fontSize: 36,
+            fontSize: 72,
             fontWeight: 400,
             color: "#94a3b8",
             textAlign: "center",
@@ -124,24 +116,23 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
           Every session starts from zero.
         </div>
 
-        {/* Token waste stats */}
         <div
           style={{
             opacity: statsOpacity,
-            marginTop: 40,
+            marginTop: 80,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 12,
+            gap: 24,
           }}
         >
           <div
             style={{
               fontFamily,
-              fontSize: 72,
+              fontSize: 144,
               fontWeight: 800,
               color: `rgba(239, 68, 68, ${redPulse})`,
-              letterSpacing: "-2px",
+              letterSpacing: "-4px",
             }}
           >
             {wastedTokens.toLocaleString()}
@@ -149,7 +140,7 @@ export const SceneHook: React.FC<Props> = ({ fontFamily }) => {
           <div
             style={{
               fontFamily,
-              fontSize: 22,
+              fontSize: 44,
               color: "#64748b",
               fontWeight: 600,
             }}

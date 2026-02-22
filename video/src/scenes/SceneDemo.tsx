@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     tool: "recall",
-    code: 'recall("database") → "PostgreSQL"',
+    code: 'recall("database") \u2192 "PostgreSQL"',
     agent: 1,
     label: "Search",
   },
@@ -57,9 +57,9 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
       <div
         style={{
           position: "absolute",
-          top: 80,
+          top: 160,
           fontFamily,
-          fontSize: 42,
+          fontSize: 84,
           fontWeight: 700,
           color: "#e2e8f0",
           opacity: titleOpacity,
@@ -75,8 +75,8 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
       <div
         style={{
           display: "flex",
-          gap: 32,
-          marginTop: 40,
+          gap: 64,
+          marginTop: 80,
         }}
       >
         {STEPS.map((step, i) => {
@@ -93,7 +93,6 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
             { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
           );
 
-          // Typewriter effect for code
           const typeStart = panelDelay + 0.3 * fps;
           const charsShown = Math.round(
             interpolate(
@@ -116,16 +115,16 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
             <div
               key={step.tool}
               style={{
-                width: 500,
+                width: 1000,
                 opacity: panelOpacity,
-                transform: `translateY(${interpolate(panelSpring, [0, 1], [40, 0])}px)`,
+                transform: `translateY(${interpolate(panelSpring, [0, 1], [80, 0])}px)`,
                 background: "rgba(30, 41, 59, 0.7)",
-                border: "1px solid rgba(51, 65, 85, 0.5)",
-                borderRadius: 16,
-                padding: 24,
+                border: "2px solid rgba(51, 65, 85, 0.5)",
+                borderRadius: 32,
+                padding: 48,
                 display: "flex",
                 flexDirection: "column",
-                gap: 16,
+                gap: 32,
               }}
             >
               {/* Agent badge */}
@@ -133,20 +132,20 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
+                  gap: 20,
                 }}
               >
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 64,
+                    height: 64,
                     borderRadius: "50%",
                     background: agent.color,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontFamily,
-                    fontSize: 14,
+                    fontSize: 28,
                     fontWeight: 700,
                     color: "white",
                   }}
@@ -156,7 +155,7 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
                 <span
                   style={{
                     fontFamily,
-                    fontSize: 16,
+                    fontSize: 32,
                     fontWeight: 600,
                     color: "#e2e8f0",
                   }}
@@ -166,7 +165,7 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
                 <span
                   style={{
                     fontFamily,
-                    fontSize: 13,
+                    fontSize: 26,
                     color: "#64748b",
                     marginLeft: "auto",
                   }}
@@ -179,18 +178,18 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
               <div
                 style={{
                   background: "#0f172a",
-                  borderRadius: 10,
-                  padding: "14px 18px",
+                  borderRadius: 20,
+                  padding: "28px 36px",
                   fontFamily: monoFamily,
-                  fontSize: 15,
+                  fontSize: 30,
                   color: "#22d3ee",
-                  letterSpacing: "-0.3px",
-                  minHeight: 48,
+                  letterSpacing: "-0.5px",
+                  minHeight: 96,
                   display: "flex",
                   alignItems: "center",
                 }}
               >
-                <span style={{ color: "#64748b", marginRight: 8 }}>$</span>
+                <span style={{ color: "#64748b", marginRight: 16 }}>$</span>
                 {step.code.slice(0, charsShown)}
                 {charsShown < step.code.length && (
                   <span
@@ -210,13 +209,13 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
                   opacity: checkOpacity,
                   display: "flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: 16,
                   fontFamily,
-                  fontSize: 14,
+                  fontSize: 28,
                   color: "#10B981",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M5 13l4 4L19 7"
                     stroke="#10B981"
@@ -232,13 +231,13 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
         })}
       </div>
 
-      {/* Bottom: client logos strip */}
+      {/* Bottom client strip */}
       <div
         style={{
           position: "absolute",
-          bottom: 60,
+          bottom: 120,
           display: "flex",
-          gap: 40,
+          gap: 80,
           alignItems: "center",
         }}
       >
@@ -256,7 +255,7 @@ export const SceneDemo: React.FC<Props> = ({ fontFamily, monoFamily }) => {
                 key={name}
                 style={{
                   fontFamily,
-                  fontSize: 16,
+                  fontSize: 32,
                   fontWeight: 600,
                   color: "#64748b",
                   opacity: stripOpacity,
