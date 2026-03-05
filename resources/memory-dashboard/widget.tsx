@@ -511,7 +511,8 @@ function MemoryDashboardInner() {
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
-    maxHeight: 700,
+    height: "100%",
+    maxHeight: "100vh",
     position: "relative",
   };
 
@@ -901,7 +902,7 @@ function MemoryDashboardInner() {
         style={{
           flex: "1 1 0%",
           overflowY: "auto",
-          maxHeight: 400,
+          minHeight: 0,
         }}
       >
         {activeTab === "memories" ? (
