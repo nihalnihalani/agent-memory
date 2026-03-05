@@ -4,16 +4,39 @@ import { existsSync, mkdirSync } from "fs";
 
 let fts5Available = false;
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 500;
+
+function openDatabaseWithRetry(dbPath: string): Database.Database {
+  let lastError: Error | undefined;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const db = new Database(dbPath);
+      db.pragma("journal_mode = WAL");
+      db.pragma("foreign_keys = ON");
+      return db;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`Database open attempt ${attempt}/${MAX_RETRIES} failed: ${err.message}`);
+      if (attempt < MAX_RETRIES) {
+        // Synchronous busy-wait for retry (better-sqlite3 is synchronous)
+        const start = Date.now();
+        while (Date.now() - start < RETRY_DELAY_MS * attempt) {
+          // busy wait
+        }
+      }
+    }
+  }
+  throw new Error(`Failed to open database after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+}
+
 export function initializeDatabase(dbPath: string): Database.Database {
   const dir = path.dirname(dbPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
 
-  const db = new Database(dbPath);
-
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+  const db = openDatabaseWithRetry(dbPath);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS memories (
@@ -110,6 +133,36 @@ export function initializeDatabase(dbPath: string): Database.Database {
       END;
     `);
 
+    // Verify FTS5 index integrity; rebuild if corrupt
+    try {
+      db.prepare(`SELECT COUNT(*) FROM memories_fts`).get();
+    } catch {
+      console.warn("FTS5 index appears corrupt, rebuilding...");
+      try {
+        db.exec(`INSERT INTO memories_fts(memories_fts) VALUES('rebuild')`);
+        console.log("FTS5 index rebuilt successfully");
+      } catch (rebuildErr: any) {
+        console.warn(`FTS5 rebuild failed: ${rebuildErr.message}, recreating FTS table...`);
+        try {
+          db.exec(`DROP TABLE IF EXISTS memories_fts`);
+          db.exec(`
+            CREATE VIRTUAL TABLE memories_fts USING fts5(
+              key, value, context,
+              content='memories',
+              content_rowid='id',
+              tokenize='porter unicode61'
+            );
+            INSERT INTO memories_fts(memories_fts) VALUES('rebuild');
+          `);
+          console.log("FTS5 table recreated and rebuilt successfully");
+        } catch {
+          console.warn("FTS5 completely unavailable, falling back to LIKE search");
+          fts5Available = false;
+          return db;
+        }
+      }
+    }
+
     fts5Available = true;
   } catch {
     console.warn("FTS5 not available, falling back to LIKE-based search");
@@ -121,4 +174,18 @@ export function initializeDatabase(dbPath: string): Database.Database {
 
 export function isFts5Available(): boolean {
   return fts5Available;
+}
+
+/**
+ * Rebuild the FTS5 index. Call this if search results seem stale or incorrect.
+ */
+export function rebuildFtsIndex(db: Database.Database): boolean {
+  if (!fts5Available) return false;
+  try {
+    db.exec(`INSERT INTO memories_fts(memories_fts) VALUES('rebuild')`);
+    return true;
+  } catch (err: any) {
+    console.warn(`FTS5 rebuild failed: ${err.message}`);
+    return false;
+  }
 }

@@ -34,6 +34,7 @@ import {
   exportMemories,
   importMemories,
   getMemoryStats,
+  safeParseJsonArray,
 } from "./src/db/queries.js";
 import type { SearchResultRow, ExportedMemory } from "./src/db/queries.js";
 import { agentDisplayName, relativeTime, truncate, getAgentId } from "./src/tools/helpers.js";
@@ -827,7 +828,7 @@ server.tool(
 
       // Gather context memories
       let contextMemories: any[] = [];
-      const contextKeys: string[] = handoff.context_keys ? JSON.parse(handoff.context_keys) : [];
+      const contextKeys: string[] = safeParseJsonArray(handoff.context_keys);
       for (const key of contextKeys) {
         const mem = getMemoryByKey(db, key);
         if (mem) {

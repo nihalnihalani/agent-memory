@@ -64,11 +64,17 @@ export function truncate(text: string, maxLen: number): string {
   return text.substring(0, maxLen) + "...";
 }
 
+const MAX_AGENT_ID_LENGTH = 200;
+
 /**
  * Extract the agent ID from the MCP tool context.
+ * Truncates excessively long agent IDs to prevent storage abuse.
  */
 export function getAgentId(ctx: any): string {
-  return ctx?._meta?.clientInfo?.name
+  const raw = ctx?._meta?.clientInfo?.name
     || ctx?.meta?.clientInfo?.name
     || "unknown";
+  if (typeof raw !== "string") return "unknown";
+  if (raw.length > MAX_AGENT_ID_LENGTH) return raw.substring(0, MAX_AGENT_ID_LENGTH);
+  return raw;
 }
