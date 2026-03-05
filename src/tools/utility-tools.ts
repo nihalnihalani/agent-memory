@@ -10,6 +10,7 @@ import {
   getMemoryStats,
   checkRateLimit,
 } from "../db/queries.js";
+import { cleanupOldRecords } from "../db/schema.js";
 import { agentDisplayName, getAgentId } from "./helpers.js";
 import { memoryTypeEnum } from "./memory-tools.js";
 
@@ -196,6 +197,44 @@ export function registerUtilityTools(server: MCPServer, db: Database.Database): 
         }
 
         return text(lines.join("\n").trimEnd());
+      } catch (err: any) {
+        return error(`Error: ${err.message}`);
+      }
+    }
+  );
+
+  // --- cleanup ---
+  server.tool(
+    {
+      name: "cleanup",
+      description:
+        "Manually trigger cleanup of old activity logs (>30 days) and memory history (>90 days). Use this to reclaim space and improve query performance.",
+      schema: z.object({}),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (_params, ctx) => {
+      try {
+        const agentId = getAgentId(ctx);
+        checkRateLimit(agentId);
+
+        const { activityDeleted, historyDeleted } = cleanupOldRecords(db);
+
+        logActivity(db, {
+          agent_id: agentId,
+          action: "cleanup",
+          detail: `Manual cleanup: removed ${activityDeleted} activity logs, ${historyDeleted} history entries`,
+        });
+
+        const lines: string[] = [];
+        lines.push("Cleanup complete.");
+        lines.push(`  Activity log entries removed (>30 days): ${activityDeleted}`);
+        lines.push(`  Memory history entries removed (>90 days): ${historyDeleted}`);
+
+        return text(lines.join("\n"));
       } catch (err: any) {
         return error(`Error: ${err.message}`);
       }

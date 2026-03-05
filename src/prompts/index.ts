@@ -107,6 +107,7 @@ export function registerPrompts(server: MCPServer, db: Database.Database): void 
       sections.push("- `export-memories` — export memories as JSON with optional filters");
       sections.push("- `import-memories` — import memories from JSON backup");
       sections.push("- `memory-stats` — view comprehensive memory database statistics");
+      sections.push("- `cleanup` — manually trigger cleanup of old activity logs and memory history");
 
       return text(sections.join("\n"));
     }

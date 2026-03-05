@@ -1,7 +1,7 @@
 import { MCPServer } from "mcp-use/server";
 import path from "path";
 import { fileURLToPath } from "url";
-import { initializeDatabase } from "./src/db/schema.js";
+import { initializeDatabase, cleanupOldRecords, startPeriodicCleanup } from "./src/db/schema.js";
 import { seedDatabase } from "./src/db/seed.js";
 import { registerMemoryTools } from "./src/tools/memory-tools.js";
 import { registerHandoffTools } from "./src/tools/handoff-tools.js";
@@ -18,6 +18,10 @@ const db = initializeDatabase(dbPath);
 if (!process.env.SKIP_SEED) {
   seedDatabase(db);
 }
+
+// --- TTL cleanup: prune old activity_log and memory_history ---
+cleanupOldRecords(db);
+startPeriodicCleanup(db);
 
 // --- MCP Server ---
 const server = new MCPServer({

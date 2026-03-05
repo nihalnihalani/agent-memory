@@ -177,6 +177,48 @@ export function isFts5Available(): boolean {
 }
 
 /**
+ * Clean up old records from unbounded tables to prevent performance degradation.
+ * - activity_log: deletes entries older than 30 days
+ * - memory_history: deletes entries older than 90 days
+ */
+export function cleanupOldRecords(db: Database.Database): { activityDeleted: number; historyDeleted: number } {
+  const activityResult = db.prepare(
+    `DELETE FROM activity_log WHERE created_at < datetime('now', '-30 days')`
+  ).run();
+  const historyResult = db.prepare(
+    `DELETE FROM memory_history WHERE changed_at < datetime('now', '-90 days')`
+  ).run();
+
+  const activityDeleted = activityResult.changes;
+  const historyDeleted = historyResult.changes;
+
+  if (activityDeleted > 0 || historyDeleted > 0) {
+    console.log(
+      `Cleanup: removed ${activityDeleted} activity_log entries (>30 days) and ${historyDeleted} memory_history entries (>90 days)`
+    );
+  }
+
+  return { activityDeleted, historyDeleted };
+}
+
+/**
+ * Start a periodic cleanup timer that runs every 6 hours.
+ * The timer is unref'd so it won't prevent process exit.
+ */
+export function startPeriodicCleanup(db: Database.Database): ReturnType<typeof setInterval> {
+  const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+  const timer = setInterval(() => {
+    try {
+      cleanupOldRecords(db);
+    } catch (err: any) {
+      console.warn(`Periodic cleanup failed: ${err.message}`);
+    }
+  }, SIX_HOURS_MS);
+  timer.unref();
+  return timer;
+}
+
+/**
  * Rebuild the FTS5 index. Call this if search results seem stale or incorrect.
  */
 export function rebuildFtsIndex(db: Database.Database): boolean {

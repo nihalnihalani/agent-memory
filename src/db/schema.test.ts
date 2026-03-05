@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import Database from "better-sqlite3";
-import { initializeDatabase, isFts5Available, rebuildFtsIndex } from "./schema.js";
+import { initializeDatabase, isFts5Available, rebuildFtsIndex, cleanupOldRecords } from "./schema.js";
 
 let db: Database.Database;
 
@@ -148,5 +148,89 @@ describe("foreign key constraints", () => {
 
     const history = db.prepare("SELECT * FROM memory_history WHERE memory_id = ?").all(mem.id);
     expect(history).toHaveLength(0);
+  });
+});
+
+describe("cleanupOldRecords", () => {
+  it("should delete activity_log entries older than 30 days", () => {
+    db = initializeDatabase(":memory:");
+    // Insert an old activity log entry (45 days ago)
+    db.prepare(
+      `INSERT INTO activity_log (agent_id, action, detail, created_at) VALUES (?, ?, ?, datetime('now', '-45 days'))`
+    ).run("agent-old", "test", "old entry");
+    // Insert a recent activity log entry
+    db.prepare(
+      `INSERT INTO activity_log (agent_id, action, detail, created_at) VALUES (?, ?, ?, datetime('now', '-1 day'))`
+    ).run("agent-recent", "test", "recent entry");
+
+    const result = cleanupOldRecords(db);
+
+    expect(result.activityDeleted).toBe(1);
+    const remaining = db.prepare("SELECT COUNT(*) as c FROM activity_log").get() as { c: number };
+    expect(remaining.c).toBe(1);
+  });
+
+  it("should delete memory_history entries older than 90 days", () => {
+    db = initializeDatabase(":memory:");
+    // Insert a memory so foreign key is valid
+    db.prepare("INSERT INTO memories (key, value) VALUES (?, ?)").run("cleanup-test", "v1");
+    const mem = db.prepare("SELECT id FROM memories WHERE key = ?").get("cleanup-test") as { id: number };
+
+    // Insert an old history entry (120 days ago)
+    db.prepare(
+      `INSERT INTO memory_history (memory_id, old_value, changed_at) VALUES (?, ?, datetime('now', '-120 days'))`
+    ).run(mem.id, "very old value");
+    // Insert a recent history entry (10 days ago)
+    db.prepare(
+      `INSERT INTO memory_history (memory_id, old_value, changed_at) VALUES (?, ?, datetime('now', '-10 days'))`
+    ).run(mem.id, "recent value");
+
+    const result = cleanupOldRecords(db);
+
+    expect(result.historyDeleted).toBe(1);
+    const remaining = db.prepare("SELECT COUNT(*) as c FROM memory_history").get() as { c: number };
+    expect(remaining.c).toBe(1);
+  });
+
+  it("should preserve recent activity_log entries", () => {
+    db = initializeDatabase(":memory:");
+    // Insert entries at 1, 15, and 29 days ago (all within 30-day window)
+    for (const days of [1, 15, 29]) {
+      db.prepare(
+        `INSERT INTO activity_log (agent_id, action, created_at) VALUES (?, ?, datetime('now', '-${days} days'))`
+      ).run("agent", "test");
+    }
+
+    const result = cleanupOldRecords(db);
+
+    expect(result.activityDeleted).toBe(0);
+    const remaining = db.prepare("SELECT COUNT(*) as c FROM activity_log").get() as { c: number };
+    expect(remaining.c).toBe(3);
+  });
+
+  it("should preserve recent memory_history entries within 90-day window", () => {
+    db = initializeDatabase(":memory:");
+    db.prepare("INSERT INTO memories (key, value) VALUES (?, ?)").run("hist-keep", "v1");
+    const mem = db.prepare("SELECT id FROM memories WHERE key = ?").get("hist-keep") as { id: number };
+
+    // Insert entries at 1, 45, and 89 days ago (all within 90-day window)
+    for (const days of [1, 45, 89]) {
+      db.prepare(
+        `INSERT INTO memory_history (memory_id, old_value, changed_at) VALUES (?, ?, datetime('now', '-${days} days'))`
+      ).run(mem.id, `value-${days}`);
+    }
+
+    const result = cleanupOldRecords(db);
+
+    expect(result.historyDeleted).toBe(0);
+    const remaining = db.prepare("SELECT COUNT(*) as c FROM memory_history").get() as { c: number };
+    expect(remaining.c).toBe(3);
+  });
+
+  it("should return zero counts when no old records exist", () => {
+    db = initializeDatabase(":memory:");
+    const result = cleanupOldRecords(db);
+    expect(result.activityDeleted).toBe(0);
+    expect(result.historyDeleted).toBe(0);
   });
 });
