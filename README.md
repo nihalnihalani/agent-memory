@@ -138,10 +138,11 @@ Then connect at `http://localhost:3010/mcp` or open the [inspector](http://local
 ### Inline Dashboard
 
 - **Renders inside conversations** — no separate app
-- **Search, filter, sort** — full-text, by type, by date
+- **Search + filter compound** — combine text search with type filters
 - **Quick-add** — create memories without tool calls
 - **Inline editing** — update memories in place
 - **Dark & light mode** — adapts to your client
+- **Fullscreen responsive** — expands to fill any viewport
 
 </td>
 <td width="50%" valign="top">
@@ -150,9 +151,33 @@ Then connect at `http://localhost:3010/mcp` or open the [inspector](http://local
 
 - **Structured work transfer** — summary, context, next steps
 - **Context inheritance** — references to relevant memories
-- **Status tracking** — `pending` `in_progress` `completed`
+- **Atomic pickup** — race-condition-safe with transaction locking
 - **One-click pickup** — accept handoffs from the dashboard
 - **Auto-briefing** — new agent gets full context on pickup
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Backup & Analytics
+
+- **Export memories** — JSON with filters by agent, type, date, tags
+- **Import memories** — restore from backup, skip duplicates
+- **Memory statistics** — counts by type/agent, top accessed, FTS5 health
+- **Automatic cleanup** — TTL on activity logs (30d) and history (90d)
+
+</td>
+<td width="50%" valign="top">
+
+### Production Hardened
+
+- **Rate limiting** — 100 ops/min per agent with sliding window
+- **Input validation** — key format, value size (10KB), tag limits
+- **FTS5 injection protection** — boolean operators and special chars stripped
+- **Error recovery** — DB retry with backoff, FTS5 auto-repair
+- **Graceful shutdown** — SIGINT/SIGTERM close DB cleanly
+- **158 tests** — queries, schema, helpers, edge cases
 
 </td>
 </tr>
@@ -166,11 +191,15 @@ Then connect at `http://localhost:3010/mcp` or open the [inspector](http://local
 |---|:---:|:---:|
 | Inline widget inside conversations | **Yes** | No |
 | Cross-agent memory (Claude + ChatGPT + Cursor) | **Yes** | Limited |
-| Agent-to-agent handoffs | **Yes** | No |
+| Agent-to-agent handoffs with atomic locking | **Yes** | No |
 | Visual agent attribution | **Yes** | No |
-| FTS5 + composite scoring | **Yes** | Keyword only |
+| FTS5 + composite scoring (4-signal ranking) | **Yes** | Keyword only |
+| Export/import with backup & restore | **Yes** | Rarely |
+| Rate limiting & input validation | **Yes** | Rarely |
+| Auto-cleanup with TTL | **Yes** | No |
 | Zero ML dependencies | **Yes** | Often heavy |
 | Single URL to connect | **Yes** | Complex setup |
+| 158 automated tests | **Yes** | Varies |
 
 <br />
 
@@ -188,8 +217,8 @@ graph TB
 
     subgraph Server["Agent Memory Server"]
         direction TB
-        Tools["7 Tools<br/><code>remember · recall · forget · list</code><br/><code>handoff · pickup · complete</code>"]
-        Resources["5 Resources<br/><code>current-context · agent-activity</code><br/><code>memory://{key} · handoff-queue · changelog</code>"]
+        Tools["11 Tools<br/><code>remember · recall · forget · list</code><br/><code>handoff · pickup · complete</code><br/><code>export · import · stats · cleanup</code>"]
+        Resources["7 Resources<br/><code>current-context · agent-activity</code><br/><code>memory://{key} · handoff-queue · changelog</code>"]
         Prompt["1 Prompt<br/><code>session-briefing</code>"]
     end
 
@@ -202,7 +231,7 @@ graph TB
         React["React 19 Dashboard"]
     end
 
-    Clients -->|"HTTP Streamable MCP"| Server
+    Clients -->|"MCP over SSE"| Server
     Server --> Storage
     Server --> Widget
 
@@ -248,8 +277,12 @@ sequenceDiagram
 | **`forget`** | Delete a memory by key with cascading cleanup of tags and history. |
 | **`list-memories`** | Browse memories with pagination, type filtering, and tag filtering. |
 | **`handoff`** | Create an agent-to-agent work transfer with summary, stuck reason, next steps, and context references. |
-| **`pickup`** | Accept a pending handoff. Auto-loads context memories and relevant decisions for a full briefing. |
-| **`complete-handoff`** | Mark a handoff as completed with a result summary. |
+| **`pickup`** | Accept a pending handoff with atomic locking. Auto-loads context memories and relevant decisions for a full briefing. |
+| **`complete-handoff`** | Mark a handoff as completed. Enforces ownership — only the agent that picked up the handoff can complete it. |
+| **`export-memories`** | Export memories as JSON with optional filters: agent, type, tags, date range. |
+| **`import-memories`** | Import memories from JSON backup. Validates entries and skips duplicates by key. |
+| **`memory-stats`** | Comprehensive statistics: totals by type/agent, top 10 most accessed, storage size, FTS5 health. |
+| **`cleanup`** | Manually trigger cleanup of old activity logs (>30 days) and memory history (>90 days). |
 
 ### Resources
 
@@ -373,31 +406,56 @@ Every token saved is a GPU cycle that doesn't fire. At scale, Agent Memory is in
 
 ```
 agent-memory/
-├── index.ts                          # MCP server — 7 tools, 5 resources, 1 prompt
+├── index.ts                          # Entry point — server init + module registration (70 lines)
 ├── src/
 │   ├── db/
-│   │   ├── schema.ts                 # SQLite schema + FTS5 setup
-│   │   ├── queries.ts                # Database operations
-│   │   └── seed.ts                   # Demo data
-│   └── tools/
-│       └── helpers.ts                # Agent names + formatting
+│   │   ├── schema.ts                 # SQLite schema + FTS5 + retry + cleanup
+│   │   ├── queries.ts                # All DB operations + rate limiter + validation
+│   │   ├── queries.test.ts           # 120 tests — CRUD, search, handoffs, edge cases
+│   │   ├── schema.test.ts            # 17 tests — tables, FTS5, cleanup, triggers
+│   │   └── seed.ts                   # Demo data (4 agents collaborating)
+│   ├── tools/
+│   │   ├── memory-tools.ts           # remember, recall, forget, list-memories
+│   │   ├── handoff-tools.ts          # handoff, pickup, complete-handoff
+│   │   ├── utility-tools.ts          # export, import, stats, cleanup
+│   │   ├── helpers.ts                # Agent names + formatting
+│   │   └── helpers.test.ts           # 20 tests — display names, timestamps
+│   ├── resources/
+│   │   └── index.ts                  # 5 resources + 2 widget resources
+│   └── prompts/
+│       └── index.ts                  # session-briefing prompt
 ├── resources/
 │   └── memory-dashboard/
-│       ├── widget.tsx                # Interactive dashboard (1,400+ lines)
+│       ├── widget.tsx                # Interactive dashboard (1,500+ lines)
 │       ├── types.ts                  # TypeScript interfaces
 │       ├── utils.ts                  # Agent colors, helpers
 │       └── components/
-│           ├── MemoryCard.tsx         # Memory display
-│           ├── SearchBar.tsx          # FTS5 search input
-│           ├── TypeFilter.tsx         # Type selector
-│           ├── StatsBar.tsx           # Statistics
+│           ├── MemoryCard.tsx         # Memory display with agent colors
+│           ├── SearchBar.tsx          # Debounced FTS5 search
+│           ├── TypeFilter.tsx         # Type selector pills
+│           ├── StatsBar.tsx           # Statistics bar
 │           ├── ActivityFeed.tsx       # Agent timeline
 │           ├── HandoffCard.tsx        # Handoff display
 │           └── QuickAddForm.tsx       # Quick memory creation
+├── vitest.config.ts                   # Test configuration
 ├── public/                            # Static assets
 ├── data/                              # SQLite database (runtime)
 └── dist/                              # Compiled output + widget manifest
 ```
+
+</details>
+
+<details>
+<summary><strong>Run Tests</strong></summary>
+
+<br />
+
+```bash
+npm test          # run all 158 tests
+npm run test:watch # watch mode
+```
+
+Tests cover: CRUD operations, FTS5 search, composite scoring, handoff state machine, rate limiting, input validation, TTL cleanup, and edge cases. All tests use in-memory SQLite for fast isolation (~180ms total).
 
 </details>
 
