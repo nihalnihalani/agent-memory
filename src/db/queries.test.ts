@@ -29,6 +29,8 @@ import {
   exportMemories,
   importMemories,
   getMemoryStats,
+  checkRateLimit,
+  safeParseJsonArray,
 } from "./queries.js";
 
 let db: Database.Database;
@@ -865,5 +867,203 @@ describe("edge cases", () => {
     const longQuery = "test ".repeat(200);
     const results = searchMemories(db, { query: longQuery });
     expect(Array.isArray(results)).toBe(true);
+  });
+});
+
+// ========================
+// RATE LIMITER
+// ========================
+describe("checkRateLimit", () => {
+  it("should allow operations under the limit", () => {
+    const agentId = `rate-test-under-${Date.now()}`;
+    // Should not throw for a few operations
+    expect(() => checkRateLimit(agentId)).not.toThrow();
+    expect(() => checkRateLimit(agentId)).not.toThrow();
+    expect(() => checkRateLimit(agentId)).not.toThrow();
+  });
+
+  it("should throw after 100 operations in 1 minute", () => {
+    const agentId = `rate-test-over-${Date.now()}`;
+    // Perform 100 operations (the limit)
+    for (let i = 0; i < 100; i++) {
+      checkRateLimit(agentId);
+    }
+    // 101st should throw
+    expect(() => checkRateLimit(agentId)).toThrow("Rate limit exceeded");
+  });
+
+  it("should include retry-after seconds in error message", () => {
+    const agentId = `rate-test-retry-${Date.now()}`;
+    for (let i = 0; i < 100; i++) {
+      checkRateLimit(agentId);
+    }
+    try {
+      checkRateLimit(agentId);
+      expect.unreachable("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toMatch(/Try again in \d+s/);
+    }
+  });
+
+  it("should enforce rate limits per-agent independently", () => {
+    const agentA = `rate-test-agentA-${Date.now()}`;
+    const agentB = `rate-test-agentB-${Date.now()}`;
+    // Fill up agent A's limit
+    for (let i = 0; i < 100; i++) {
+      checkRateLimit(agentA);
+    }
+    // Agent A should be rate-limited
+    expect(() => checkRateLimit(agentA)).toThrow("Rate limit exceeded");
+    // Agent B should still be allowed
+    expect(() => checkRateLimit(agentB)).not.toThrow();
+  });
+});
+
+// ========================
+// safeParseJsonArray
+// ========================
+describe("safeParseJsonArray", () => {
+  it("should parse a valid JSON array", () => {
+    expect(safeParseJsonArray('["a","b"]')).toEqual(["a", "b"]);
+  });
+
+  it("should return empty array for invalid JSON", () => {
+    expect(safeParseJsonArray("not json")).toEqual([]);
+  });
+
+  it("should return empty array for null input", () => {
+    expect(safeParseJsonArray(null)).toEqual([]);
+  });
+
+  it("should return empty array for undefined input", () => {
+    expect(safeParseJsonArray(undefined)).toEqual([]);
+  });
+
+  it("should return empty array for empty string", () => {
+    expect(safeParseJsonArray("")).toEqual([]);
+  });
+
+  it("should return empty array for non-array JSON (object)", () => {
+    expect(safeParseJsonArray('{"key":"value"}')).toEqual([]);
+  });
+
+  it("should return empty array for non-array JSON (number)", () => {
+    expect(safeParseJsonArray("42")).toEqual([]);
+  });
+
+  it("should parse empty array string", () => {
+    expect(safeParseJsonArray("[]")).toEqual([]);
+  });
+});
+
+// ========================
+// FTS5 SANITIZATION (via searchMemories)
+// ========================
+describe("FTS5 sanitization via searchMemories", () => {
+  beforeEach(() => {
+    upsertMemory(db, { key: "fts-test-doc", value: "some searchable content for testing" });
+  });
+
+  it("should handle query with FTS5 operators (AND, OR, NOT, NEAR)", () => {
+    const results = searchMemories(db, { query: "content AND searchable OR NOT something NEAR testing" });
+    expect(Array.isArray(results)).toBe(true);
+  });
+
+  it("should handle query with special FTS5 characters", () => {
+    const specialChars = '*"\'(){}:^~!';
+    const results = searchMemories(db, { query: specialChars });
+    expect(Array.isArray(results)).toBe(true);
+  });
+
+  it("should handle query exceeding 1000 characters by truncating", () => {
+    const longQuery = "word ".repeat(250); // ~1250 chars
+    const results = searchMemories(db, { query: longQuery });
+    expect(Array.isArray(results)).toBe(true);
+  });
+
+  it("should handle mixed operators and special characters", () => {
+    const results = searchMemories(db, { query: 'test AND "quoted" OR (grouped) NOT ~fuzzy' });
+    expect(Array.isArray(results)).toBe(true);
+  });
+});
+
+// ========================
+// INPUT VALIDATION EDGE CASES
+// ========================
+describe("input validation edge cases", () => {
+  it("should reject key with special characters not matching regex", () => {
+    expect(() => upsertMemory(db, { key: "@invalid-key", value: "v" })).toThrow("Invalid key format");
+    expect(() => upsertMemory(db, { key: "key with spaces", value: "v" })).toThrow("Invalid key format");
+    expect(() => upsertMemory(db, { key: "key!bang", value: "v" })).toThrow("Invalid key format");
+    expect(() => upsertMemory(db, { key: "#hashtag", value: "v" })).toThrow("Invalid key format");
+  });
+
+  it("should reject key starting with a hyphen", () => {
+    expect(() => upsertMemory(db, { key: "-starts-with-hyphen", value: "v" })).toThrow("Invalid key format");
+  });
+
+  it("should reject key starting with a dot", () => {
+    expect(() => upsertMemory(db, { key: ".starts-with-dot", value: "v" })).toThrow("Invalid key format");
+  });
+
+  it("should reject key at exactly 256 characters", () => {
+    const key = "a".repeat(256);
+    expect(() => upsertMemory(db, { key, value: "v" })).toThrow("characters or less");
+  });
+
+  it("should accept key at exactly 255 characters", () => {
+    const key = "a".repeat(255);
+    const mem = upsertMemory(db, { key, value: "v" });
+    expect(mem.key).toBe(key);
+  });
+
+  it("should reject value at exactly 10241 bytes", () => {
+    const value = "x".repeat(10241);
+    expect(() => upsertMemory(db, { key: "k-val-limit", value })).toThrow("10240 bytes or less");
+  });
+
+  it("should accept value at exactly 10240 bytes", () => {
+    const value = "x".repeat(10240);
+    const mem = upsertMemory(db, { key: "k-val-ok", value });
+    expect(mem.value).toBe(value);
+  });
+
+  it("should reject more than 20 tags", () => {
+    const tags = Array.from({ length: 21 }, (_, i) => `t${i}`);
+    expect(() => upsertMemory(db, { key: "k-tags", value: "v", tags })).toThrow("Maximum of 20 tags");
+  });
+
+  it("should accept exactly 20 tags", () => {
+    const tags = Array.from({ length: 20 }, (_, i) => `t${i}`);
+    const mem = upsertMemory(db, { key: "k-20tags", value: "v", tags });
+    expect(mem.key).toBe("k-20tags");
+  });
+
+  it("should reject a tag exceeding 100 characters", () => {
+    const longTag = "t".repeat(101);
+    expect(() => upsertMemory(db, { key: "k-longtag", value: "v", tags: [longTag] })).toThrow("100 characters or less");
+  });
+
+  it("should accept a tag at exactly 100 characters", () => {
+    const tag = "t".repeat(100);
+    const mem = upsertMemory(db, { key: "k-tag100", value: "v", tags: [tag] });
+    expect(mem.key).toBe("k-tag100");
+  });
+
+  it("should reject context exceeding 5000 characters", () => {
+    const context = "c".repeat(5001);
+    expect(() => upsertMemory(db, { key: "k-ctx", value: "v", context })).toThrow("5000 characters or less");
+  });
+
+  it("should accept context at exactly 5000 characters", () => {
+    const context = "c".repeat(5000);
+    const mem = upsertMemory(db, { key: "k-ctx-ok", value: "v", context });
+    expect(mem.key).toBe("k-ctx-ok");
+  });
+
+  it("should reject invalid type values", () => {
+    expect(() => upsertMemory(db, { key: "k-badtype", value: "v", type: "invalid" })).toThrow("Invalid type");
+    expect(() => upsertMemory(db, { key: "k-badtype2", value: "v", type: "Note" })).toThrow("Invalid type");
+    expect(() => upsertMemory(db, { key: "k-badtype3", value: "v", type: "DECISION" })).toThrow("Invalid type");
   });
 });
