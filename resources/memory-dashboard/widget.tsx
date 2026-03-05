@@ -129,6 +129,7 @@ function MemoryDashboardInner() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: string }>>([]);
+  const [hasNewUpdates, setHasNewUpdates] = useState(false);
 
   // ═══════════════════════════════════════════════════════════
   // Helper to hydrate state from a tool result's structuredContent
@@ -216,16 +217,25 @@ function MemoryDashboardInner() {
 
   // ═══════════════════════════════════════════════════════════
   // Auto-refresh polling — silent background updates every 15s
+  // Only auto-refresh when no active search/filter to avoid
+  // overwriting user's current view
   // ═══════════════════════════════════════════════════════════
+  const hasActiveFilters = !!(searchQuery || typeFilter);
+
   useEffect(() => {
     if (!hasLoaded) return;
     const interval = setInterval(() => {
-      listMemoriesAsync({ limit: 50 })
-        .then(hydrateFromResult)
-        .catch(() => {});
+      if (hasActiveFilters) {
+        // Don't overwrite search/filter results — show indicator instead
+        setHasNewUpdates(true);
+      } else {
+        listMemoriesAsync({ limit: 50 })
+          .then(hydrateFromResult)
+          .catch(() => {});
+      }
     }, 15000);
     return () => clearInterval(interval);
-  }, [hasLoaded]);
+  }, [hasLoaded, hasActiveFilters]);
 
   // ═══════════════════════════════════════════════════════════
   // Toast notifications helper
@@ -244,15 +254,25 @@ function MemoryDashboardInner() {
 
   const handleSearch = async (query: string) => {
     await setState((prev: any) => ({ ...prev, searchQuery: query }));
-    recallAsync({ query, limit: 20 })
-      .then(hydrateFromResult)
-      .catch(() => {});
+    setHasNewUpdates(false);
+    if (query.trim()) {
+      recallAsync({ query, limit: 20 })
+        .then(hydrateFromResult)
+        .catch(() => {});
+    } else {
+      // Empty query: fall back to list-memories, respecting active type filter
+      const args = typeFilter ? { type: typeFilter, limit: 50 } : { limit: 50 };
+      listMemoriesAsync(args).then(hydrateFromResult).catch(() => {});
+    }
   };
 
   const handleDelete = async (key: string) => {
     if (!window.confirm(`Are you sure you want to delete memory "${key}"?`)) {
       return;
     }
+
+    // Store the memory before removing so we can restore on failure
+    const removedMemory = allMemories.find(m => m.key === key);
 
     // Optimistic: remove from UI immediately
     setDeletingKey(key);
@@ -261,9 +281,13 @@ function MemoryDashboardInner() {
 
     try {
       await forgetAsync({ key });
+      setDeletingKey(null);
     } catch {
-      // Revert on failure — refresh full list
-      listMemoriesAsync({ limit: 50 }).then(hydrateFromResult).catch(() => {});
+      // Revert on failure — restore the memory back to state
+      if (removedMemory) {
+        setAllMemories(prev => [removedMemory, ...prev]);
+        setTotalCount(prev => prev + 1);
+      }
       setDeletingKey(null);
       addToast(`Failed to delete "${key}"`, "error");
     }
@@ -271,8 +295,17 @@ function MemoryDashboardInner() {
 
   const handleTypeFilter = async (type: string | null) => {
     await setState((prev: any) => ({ ...prev, typeFilter: type }));
-    const args = type ? { type, limit: 50 } : { limit: 50 };
-    listMemoriesAsync(args).then(hydrateFromResult).catch(() => {});
+    setHasNewUpdates(false);
+    if (searchQuery.trim()) {
+      // Compound: search with type filter — use recall for the query
+      // and let client-side filtering handle the type
+      recallAsync({ query: searchQuery, limit: 20 })
+        .then(hydrateFromResult)
+        .catch(() => {});
+    } else {
+      const args = type ? { type, limit: 50 } : { limit: 50 };
+      listMemoriesAsync(args).then(hydrateFromResult).catch(() => {});
+    }
   };
 
   const handleTabSwitch = async (tab: string) => {
@@ -306,6 +339,7 @@ function MemoryDashboardInner() {
   };
 
   const handleRefresh = () => {
+    setHasNewUpdates(false);
     listMemoriesAsync({ limit: 50 }).then(hydrateFromResult).catch(() => {});
     addToast("Refreshing...", "info");
   };
@@ -798,6 +832,28 @@ function MemoryDashboardInner() {
         </div>
       )}
 
+      {/* ════════ New Updates Banner ════════ */}
+      {hasNewUpdates && (
+        <button
+          onClick={handleRefresh}
+          style={{
+            width: "100%",
+            padding: "6px 12px",
+            fontSize: 11,
+            fontWeight: 500,
+            color: "#3b82f6",
+            background: isDark ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.06)",
+            border: "none",
+            borderBottom: `1px solid ${borderColor}`,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            transition: "background 0.2s ease",
+          }}
+        >
+          New updates available — click to refresh
+        </button>
+      )}
+
       {/* ════════ Tab Bar ════════ */}
       <div
         style={{
@@ -850,7 +906,17 @@ function MemoryDashboardInner() {
       >
         {activeTab === "memories" ? (
           sortedMemories.length === 0 ? (
-            <EmptyState isDark={isDark} onAction={sendFollowUpMessage} />
+            hasActiveFilters ? (
+              <NoResultsState
+                isDark={isDark}
+                searchQuery={searchQuery}
+                typeFilter={typeFilter}
+                onClearSearch={() => handleSearch("")}
+                onClearFilter={() => handleTypeFilter(null)}
+              />
+            ) : (
+              <EmptyState isDark={isDark} onAction={sendFollowUpMessage} />
+            )
           ) : (
             <div style={{ padding: "8px 12px" }}>
               {/* Select all toggle */}
@@ -1353,6 +1419,74 @@ function AskAboutMemories({
             {p.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function NoResultsState({
+  isDark,
+  searchQuery,
+  typeFilter,
+  onClearSearch,
+  onClearFilter,
+}: {
+  isDark: boolean;
+  searchQuery: string;
+  typeFilter: string | null;
+  onClearSearch: () => void;
+  onClearFilter: () => void;
+}) {
+  const textColor = isDark ? "#64748b" : "#94a3b8";
+  const btnBase: React.CSSProperties = {
+    padding: "5px 12px",
+    borderRadius: 8,
+    fontSize: 11,
+    color: isDark ? "#94a3b8" : "#64748b",
+    background: isDark ? "rgba(30,41,59,0.5)" : "#f1f5f9",
+    border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    fontFamily: "inherit",
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 160,
+        gap: 10,
+        color: textColor,
+        padding: 24,
+      }}
+    >
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <div style={{ fontSize: 12, fontWeight: 500 }}>
+        No memories found
+        {searchQuery && (
+          <span> matching &ldquo;{searchQuery.length > 30 ? searchQuery.slice(0, 30) + "..." : searchQuery}&rdquo;</span>
+        )}
+        {typeFilter && (
+          <span> in {typeFilter}s</span>
+        )}
+      </div>
+      <div style={{ fontSize: 11 }}>Try broader search terms or clear your filters</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {searchQuery && (
+          <button onClick={onClearSearch} style={btnBase}>
+            Clear search
+          </button>
+        )}
+        {typeFilter && (
+          <button onClick={onClearFilter} style={btnBase}>
+            Clear filter
+          </button>
+        )}
       </div>
     </div>
   );

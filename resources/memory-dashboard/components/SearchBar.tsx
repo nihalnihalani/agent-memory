@@ -14,25 +14,36 @@ export default function SearchBar({
   const [query, setQuery] = useState(initialQuery);
   const [isFocused, setIsFocused] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef(query);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    onSearch(query);
+    // Cancel any pending debounce to prevent duplicate search
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    onSearch(latestQueryRef.current);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
+    latestQueryRef.current = val;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
       if (val.trim()) onSearch(val);
     }, 400);
   };
 
   const handleClear = () => {
     setQuery("");
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    latestQueryRef.current = "";
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     onSearch("");
   };
 
