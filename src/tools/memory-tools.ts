@@ -14,6 +14,7 @@ import {
   getTagsForMemories,
   incrementAccessCount,
   getRecentActivity,
+  checkRateLimit,
 } from "../db/queries.js";
 import { agentDisplayName, relativeTime, truncate, getAgentId } from "./helpers.js";
 
@@ -77,6 +78,7 @@ export function registerMemoryTools(server: MCPServer, db: Database.Database): v
     async (params, ctx) => {
       try {
         const agentId = getAgentId(ctx);
+        checkRateLimit(agentId);
         const existing = getMemoryByKey(db, params.key);
 
         const memory = upsertMemory(db, {
@@ -194,6 +196,7 @@ export function registerMemoryTools(server: MCPServer, db: Database.Database): v
     async (params, ctx) => {
       try {
         const agentId = getAgentId(ctx);
+        checkRateLimit(agentId);
         const requestedLimit = Math.min(Math.max(params.limit || 5, 1), 20);
 
         const rawResults = searchMemories(db, {
@@ -315,6 +318,7 @@ export function registerMemoryTools(server: MCPServer, db: Database.Database): v
     async (params, ctx) => {
       try {
         const agentId = getAgentId(ctx);
+        checkRateLimit(agentId);
         const deleted = deleteMemory(db, params.key);
 
         if (!deleted) {
@@ -379,6 +383,7 @@ export function registerMemoryTools(server: MCPServer, db: Database.Database): v
     async (params, ctx) => {
       try {
         const agentId = getAgentId(ctx);
+        checkRateLimit(agentId);
 
         const { memories, total } = listMemories(db, {
           tags: params.tags,

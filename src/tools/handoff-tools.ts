@@ -14,6 +14,7 @@ import {
   pickupHandoff,
   completeHandoff,
   checkRateLimit,
+  safeParseJsonArray,
 } from "../db/queries.js";
 import { agentDisplayName, truncate, getAgentId } from "./helpers.js";
 
@@ -154,7 +155,7 @@ export function registerHandoffTools(server: MCPServer, db: Database.Database): 
 
         // Gather context memories
         let contextMemories: any[] = [];
-        const contextKeys: string[] = handoff.context_keys ? JSON.parse(handoff.context_keys) : [];
+        const contextKeys: string[] = safeParseJsonArray(handoff.context_keys);
         for (const key of contextKeys) {
           const mem = getMemoryByKey(db, key);
           if (mem) {
@@ -230,7 +231,7 @@ export function registerHandoffTools(server: MCPServer, db: Database.Database): 
       try {
         const agentId = getAgentId(ctx);
         checkRateLimit(agentId);
-        const handoff = completeHandoff(db, params.handoff_id);
+        const handoff = completeHandoff(db, params.handoff_id, agentId);
 
         if (!handoff) {
           // Check if handoff exists with wrong status

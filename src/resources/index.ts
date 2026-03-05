@@ -16,6 +16,7 @@ import {
   getPendingHandoffs,
   getAllHandoffs,
   getRecentChanges,
+  safeParseJsonArray,
 } from "../db/queries.js";
 import { agentDisplayName, truncate } from "../tools/helpers.js";
 
@@ -240,7 +241,7 @@ export function registerResources(server: MCPServer, db: Database.Database): voi
         lines.push("These are waiting for an agent to pick up. Use `pickup` tool to accept one.");
         lines.push("");
         for (const h of pending) {
-          const contextKeys = h.context_keys ? JSON.parse(h.context_keys) : [];
+          const contextKeys = safeParseJsonArray(h.context_keys);
           lines.push(`### Handoff #${h.id} from ${agentDisplayName(h.from_agent)}`);
           lines.push(`Created: ${h.created_at}`);
           if (h.to_agent) lines.push(`Preferred agent: ${agentDisplayName(h.to_agent)}`);

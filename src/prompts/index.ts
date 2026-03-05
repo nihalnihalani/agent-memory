@@ -104,6 +104,9 @@ export function registerPrompts(server: MCPServer, db: Database.Database): void 
       sections.push("- `handoff` — hand off your work to the next agent");
       sections.push("- `pickup` — pick up a pending handoff");
       sections.push("- `complete-handoff` — mark a handoff as done");
+      sections.push("- `export-memories` — export memories as JSON with optional filters");
+      sections.push("- `import-memories` — import memories from JSON backup");
+      sections.push("- `memory-stats` — view comprehensive memory database statistics");
 
       return text(sections.join("\n"));
     }
