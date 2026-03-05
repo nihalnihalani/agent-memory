@@ -82,8 +82,24 @@ function validateType(type: string | undefined): void {
   }
 }
 
+const MAX_AGENT_ID_LENGTH = 200;
+const MAX_QUERY_LENGTH = 1000;
+
+export function validateAgentId(agentId: string): string {
+  if (agentId.length > MAX_AGENT_ID_LENGTH) {
+    return agentId.substring(0, MAX_AGENT_ID_LENGTH);
+  }
+  return agentId;
+}
+
 function sanitizeFtsQuery(query: string): string {
-  return query.replace(/[*"'(){}[\]:^~!@#$%&]/g, ' ').trim();
+  // Truncate overly long queries
+  const truncated = query.length > MAX_QUERY_LENGTH ? query.substring(0, MAX_QUERY_LENGTH) : query;
+  // Strip FTS5 special characters
+  let sanitized = truncated.replace(/[*"'(){}[\]:^~!@#$%&+\-]/g, ' ');
+  // Strip FTS5 boolean operators (AND, OR, NOT, NEAR) as standalone tokens
+  sanitized = sanitized.replace(/\b(AND|OR|NOT|NEAR)\b/gi, ' ');
+  return sanitized.replace(/\s+/g, ' ').trim();
 }
 
 export function upsertMemory(db: Database.Database, params: UpsertMemoryParams): MemoryRow {
@@ -421,13 +437,17 @@ export function pickupHandoff(db: Database.Database, handoffId: number, agentId:
   return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
 }
 
-export function completeHandoff(db: Database.Database, handoffId: number): HandoffRow | null {
-  // Atomic: only complete if currently in_progress
-  const result = db.prepare(`
-    UPDATE handoffs SET status = 'completed', completed_at = datetime('now')
-    WHERE id = ? AND status = 'in_progress'
-  `).run(handoffId);
+export function completeHandoff(db: Database.Database, handoffId: number, agentId?: string): HandoffRow | null {
+  // If agentId is provided, only allow the agent that picked up the handoff to complete it
+  let sql = `UPDATE handoffs SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND status = 'in_progress'`;
+  const bindings: (string | number)[] = [handoffId];
 
+  if (agentId) {
+    sql += ` AND picked_up_by = ?`;
+    bindings.push(agentId);
+  }
+
+  const result = db.prepare(sql).run(...bindings);
   if (result.changes === 0) return null;
 
   return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
@@ -459,4 +479,210 @@ export function getRecentChanges(db: Database.Database, limit: number = 10): (Me
     JOIN memories m ON m.id = mh.memory_id
     ORDER BY mh.changed_at DESC LIMIT ?
   `).all(limit) as (MemoryHistoryRow & { key: string })[];
+}
+
+// ========================
+// EXPORT / IMPORT / STATS
+// ========================
+
+export interface ExportFilters {
+  agent_id?: string;
+  type?: string;
+  tags?: string[];
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface ExportedMemory {
+  key: string;
+  value: string;
+  type: string;
+  context: string | null;
+  agent_id: string | null;
+  created_at: string;
+  updated_at: string;
+  access_count: number;
+  tags: string[];
+}
+
+export function exportMemories(db: Database.Database, filters: ExportFilters): ExportedMemory[] {
+  let sql = `SELECT m.* FROM memories m WHERE 1=1`;
+  const bindings: (string | number)[] = [];
+
+  if (filters.agent_id) {
+    sql += ` AND m.agent_id = ?`;
+    bindings.push(filters.agent_id);
+  }
+
+  if (filters.type) {
+    sql += ` AND m.type = ?`;
+    bindings.push(filters.type);
+  }
+
+  if (filters.tags && filters.tags.length > 0) {
+    const tagPlaceholders = filters.tags.map(() => "?").join(",");
+    sql += ` AND m.id IN (SELECT memory_id FROM tags WHERE tag IN (${tagPlaceholders}))`;
+    bindings.push(...filters.tags);
+  }
+
+  if (filters.date_from) {
+    sql += ` AND m.created_at >= ?`;
+    bindings.push(filters.date_from);
+  }
+
+  if (filters.date_to) {
+    sql += ` AND m.created_at <= ?`;
+    bindings.push(filters.date_to);
+  }
+
+  sql += ` ORDER BY m.created_at ASC`;
+
+  const memories = db.prepare(sql).all(...bindings) as MemoryRow[];
+  const tagsMap = getTagsForMemories(db, memories.map(m => m.id));
+
+  return memories.map(m => ({
+    key: m.key,
+    value: m.value,
+    type: m.type,
+    context: m.context,
+    agent_id: m.agent_id,
+    created_at: m.created_at,
+    updated_at: m.updated_at,
+    access_count: m.access_count,
+    tags: tagsMap.get(m.id) || [],
+  }));
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+export function importMemories(db: Database.Database, memories: ExportedMemory[], agentId: string): ImportResult {
+  const result: ImportResult = { imported: 0, skipped: 0, errors: [] };
+
+  const getExisting = db.prepare(`SELECT id FROM memories WHERE key = ?`);
+  const insertMemory = db.prepare(`
+    INSERT INTO memories (key, value, type, context, agent_id)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const insertTag = db.prepare(`INSERT OR IGNORE INTO tags (memory_id, tag) VALUES (?, ?)`);
+
+  const transaction = db.transaction(() => {
+    for (const mem of memories) {
+      // Validate
+      if (!mem.key || !mem.value) {
+        result.errors.push(`Skipped entry with missing key or value`);
+        result.skipped++;
+        continue;
+      }
+
+      if (mem.key.length > MAX_KEY_LENGTH) {
+        result.errors.push(`Key too long: ${mem.key.substring(0, 50)}...`);
+        result.skipped++;
+        continue;
+      }
+
+      if (Buffer.byteLength(mem.value, "utf-8") > MAX_VALUE_LENGTH) {
+        result.errors.push(`Value too large for key: ${mem.key}`);
+        result.skipped++;
+        continue;
+      }
+
+      if (mem.type && !VALID_TYPES.includes(mem.type)) {
+        result.errors.push(`Invalid type '${mem.type}' for key: ${mem.key}`);
+        result.skipped++;
+        continue;
+      }
+
+      // Skip duplicates
+      const existing = getExisting.get(mem.key) as { id: number } | undefined;
+      if (existing) {
+        result.skipped++;
+        continue;
+      }
+
+      const insertResult = insertMemory.run(
+        mem.key,
+        mem.value,
+        mem.type || "note",
+        mem.context || null,
+        mem.agent_id || agentId,
+      );
+
+      const memoryId = insertResult.lastInsertRowid as number;
+
+      if (mem.tags && Array.isArray(mem.tags)) {
+        for (const tag of mem.tags.slice(0, MAX_TAGS)) {
+          if (tag.length <= MAX_TAG_LENGTH) {
+            insertTag.run(memoryId, tag);
+          }
+        }
+      }
+
+      result.imported++;
+    }
+  });
+
+  transaction();
+  return result;
+}
+
+export interface MemoryStats {
+  totalMemories: number;
+  memoriesByType: Record<string, number>;
+  memoriesPerAgent: { agent_id: string; count: number }[];
+  mostAccessed: MemoryRow[];
+  storageSizeEstimate: number;
+  activeHandoffs: number;
+  ftsHealthy: boolean;
+  totalTags: number;
+  totalActivityLogs: number;
+}
+
+export function getMemoryStats(db: Database.Database): MemoryStats {
+  const totalMemories = (db.prepare(`SELECT COUNT(*) as c FROM memories`).get() as { c: number }).c;
+
+  const memoriesByType = getMemoryCountsByType(db);
+
+  const memoriesPerAgent = db.prepare(
+    `SELECT agent_id, COUNT(*) as count FROM memories WHERE agent_id IS NOT NULL GROUP BY agent_id ORDER BY count DESC`
+  ).all() as { agent_id: string; count: number }[];
+
+  const mostAccessed = getMostAccessedMemories(db, 10);
+
+  // Estimate storage: sum of key + value + context byte lengths
+  const sizeRow = db.prepare(`
+    SELECT COALESCE(SUM(LENGTH(key) + LENGTH(value) + COALESCE(LENGTH(context), 0)), 0) as total_bytes
+    FROM memories
+  `).get() as { total_bytes: number };
+
+  const activeHandoffs = (db.prepare(
+    `SELECT COUNT(*) as c FROM handoffs WHERE status IN ('pending', 'in_progress')`
+  ).get() as { c: number }).c;
+
+  // Check FTS health
+  let ftsHealthy = false;
+  try {
+    db.prepare(`SELECT COUNT(*) FROM memories_fts`).get();
+    ftsHealthy = true;
+  } catch {
+    ftsHealthy = false;
+  }
+
+  const totalTags = (db.prepare(`SELECT COUNT(*) as c FROM tags`).get() as { c: number }).c;
+  const totalActivityLogs = (db.prepare(`SELECT COUNT(*) as c FROM activity_log`).get() as { c: number }).c;
+
+  return {
+    totalMemories,
+    memoriesByType,
+    memoriesPerAgent,
+    mostAccessed,
+    storageSizeEstimate: sizeRow.total_bytes,
+    activeHandoffs,
+    ftsHealthy,
+    totalTags,
+    totalActivityLogs,
+  };
 }
