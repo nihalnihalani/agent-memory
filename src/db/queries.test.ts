@@ -621,6 +621,25 @@ describe("pickupHandoff", () => {
     const result = pickupHandoff(db, 9999, "agent-x");
     expect(result).toBeNull();
   });
+
+  it("should prevent two sequential pickups on the same handoff (race condition)", () => {
+    const h = createHandoff(db, { from_agent: "a", summary: "race test", next_steps: "n" });
+
+    // First agent picks up successfully
+    const first = pickupHandoff(db, h.id, "agent-fast");
+    expect(first).not.toBeNull();
+    expect(first!.status).toBe("in_progress");
+    expect(first!.picked_up_by).toBe("agent-fast");
+
+    // Second agent tries to pick up the same handoff - should fail
+    const second = pickupHandoff(db, h.id, "agent-slow");
+    expect(second).toBeNull();
+
+    // Verify the handoff still belongs to the first agent
+    const current = db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(h.id) as any;
+    expect(current.picked_up_by).toBe("agent-fast");
+    expect(current.status).toBe("in_progress");
+  });
 });
 
 describe("completeHandoff", () => {

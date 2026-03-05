@@ -494,15 +494,19 @@ export function getAllHandoffs(db: Database.Database, limit: number = 20): Hando
 }
 
 export function pickupHandoff(db: Database.Database, handoffId: number, agentId: string): HandoffRow | null {
-  // Atomic: only update if still pending (prevents TOCTOU race condition)
-  const result = db.prepare(`
-    UPDATE handoffs SET status = 'in_progress', picked_up_by = ?, picked_up_at = datetime('now')
-    WHERE id = ? AND status = 'pending'
-  `).run(agentId, handoffId);
+  const transaction = db.transaction(() => {
+    // Atomic: only update if still pending (prevents TOCTOU race condition)
+    const result = db.prepare(`
+      UPDATE handoffs SET status = 'in_progress', picked_up_by = ?, picked_up_at = datetime('now')
+      WHERE id = ? AND status = 'pending'
+    `).run(agentId, handoffId);
 
-  if (result.changes === 0) return null;
+    if (result.changes === 0) return null;
 
-  return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
+    return db.prepare(`SELECT * FROM handoffs WHERE id = ?`).get(handoffId) as HandoffRow;
+  });
+
+  return transaction();
 }
 
 export function completeHandoff(db: Database.Database, handoffId: number, agentId?: string): HandoffRow | null {

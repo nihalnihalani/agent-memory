@@ -143,6 +143,17 @@ export function registerHandoffTools(server: MCPServer, db: Database.Database): 
         }
 
         if (!handoff) {
+          // Provide a detailed error: show who already picked it up if applicable
+          const handoffId = params.handoff_id;
+          if (handoffId) {
+            const existing = db.prepare(`SELECT picked_up_by, status FROM handoffs WHERE id = ?`).get(handoffId) as { picked_up_by: string | null; status: string } | undefined;
+            if (existing?.status === 'in_progress') {
+              return error(`Handoff #${handoffId} was already picked up by ${agentDisplayName(existing.picked_up_by || 'unknown')}`);
+            }
+            if (existing?.status === 'completed') {
+              return error(`Handoff #${handoffId} is already completed.`);
+            }
+          }
           return error("Handoff not found or already picked up by another agent.");
         }
 
