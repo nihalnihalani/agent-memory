@@ -1,11 +1,74 @@
 import type Database from "better-sqlite3";
 import { isFts5Available } from "./schema.js";
 
-const MAX_KEY_LENGTH = 500;
-const MAX_VALUE_LENGTH = 10240;
+const MAX_KEY_LENGTH = 255;
+const MAX_VALUE_LENGTH = 10240; // ~10KB
 const MAX_CONTEXT_LENGTH = 5000;
 const MAX_TAGS = 20;
 const MAX_TAG_LENGTH = 100;
+
+// Key must start with alphanumeric, then allow alphanumeric, hyphens, underscores, dots, slashes
+const KEY_FORMAT_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9\-_./]*$/;
+
+// ========================
+// RATE LIMITER
+// ========================
+
+interface RateLimitEntry {
+  timestamps: number[];
+}
+
+const RATE_LIMIT_MAX = 100;       // max operations per window
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+// Clean up stale entries every 5 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    entry.timestamps = entry.timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    if (entry.timestamps.length === 0) {
+      rateLimitMap.delete(key);
+    }
+  }
+}, 5 * 60_000).unref();
+
+export function checkRateLimit(agentId: string): void {
+  const now = Date.now();
+  let entry = rateLimitMap.get(agentId);
+  if (!entry) {
+    entry = { timestamps: [] };
+    rateLimitMap.set(agentId, entry);
+  }
+
+  // Remove timestamps outside the window
+  entry.timestamps = entry.timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+
+  if (entry.timestamps.length >= RATE_LIMIT_MAX) {
+    const oldestInWindow = entry.timestamps[0];
+    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - oldestInWindow);
+    const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+    throw new Error(
+      `Rate limit exceeded: max ${RATE_LIMIT_MAX} operations per minute. Try again in ${retryAfterSec}s.`
+    );
+  }
+
+  entry.timestamps.push(now);
+}
+
+/**
+ * Safely parse a JSON array from a string. Returns empty array on failure.
+ */
+export function safeParseJsonArray(input: string | null | undefined): string[] {
+  if (!input) return [];
+  try {
+    const parsed = JSON.parse(input);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 interface UpsertMemoryParams {
   key: string;
@@ -67,10 +130,15 @@ function validateInput(key: string, value: string): void {
     throw new Error("Key must not be empty");
   }
   if (key.length > MAX_KEY_LENGTH) {
-    throw new Error(`Key must be ${MAX_KEY_LENGTH} characters or less`);
+    throw new Error(`Key must be ${MAX_KEY_LENGTH} characters or less (got ${key.length})`);
+  }
+  if (!KEY_FORMAT_REGEX.test(key)) {
+    throw new Error(
+      `Invalid key format: '${key.substring(0, 50)}'. Keys must start with a letter or number and contain only letters, numbers, hyphens, underscores, dots, or slashes.`
+    );
   }
   if (Buffer.byteLength(value, "utf-8") > MAX_VALUE_LENGTH) {
-    throw new Error(`Value must be ${MAX_VALUE_LENGTH} bytes or less`);
+    throw new Error(`Value must be ${MAX_VALUE_LENGTH} bytes or less (~10KB)`);
   }
 }
 

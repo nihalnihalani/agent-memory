@@ -35,6 +35,8 @@ import {
   importMemories,
   getMemoryStats,
   safeParseJsonArray,
+  checkRateLimit,
+  validateAgentId,
 } from "./src/db/queries.js";
 import type { SearchResultRow, ExportedMemory } from "./src/db/queries.js";
 import { agentDisplayName, relativeTime, truncate, getAgentId } from "./src/tools/helpers.js";
@@ -126,6 +128,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
       const existing = getMemoryByKey(db, params.key);
 
       const memory = upsertMemory(db, {
@@ -243,6 +246,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
       const requestedLimit = Math.min(Math.max(params.limit || 5, 1), 20);
 
       const rawResults = searchMemories(db, {
@@ -364,6 +368,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
       const deleted = deleteMemory(db, params.key);
 
       if (!deleted) {
@@ -413,7 +418,7 @@ server.tool(
       tags: z.array(z.string()).optional().describe("Optional: filter to memories with these tags"),
       type: memoryTypeEnum.optional().describe("Optional: filter by memory type"),
       limit: z.number().min(1).max(50).optional().describe("Max results (default: 10, max: 50)"),
-      offset: z.number().optional().describe("Skip N results for pagination"),
+      offset: z.number().min(0).optional().describe("Skip N results for pagination"),
     }),
     widget: {
       name: "memory-dashboard",
@@ -428,6 +433,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
 
       const { memories, total } = listMemories(db, {
         tags: params.tags,
@@ -526,6 +532,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
 
       const exported = exportMemories(db, {
         agent_id: params.agent_id,
@@ -578,6 +585,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
 
       let parsed: any;
       try {
@@ -635,6 +643,7 @@ server.tool(
   async (_params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
       const stats = getMemoryStats(db);
 
       logActivity(db, {
@@ -701,11 +710,11 @@ server.tool(
     description:
       "Hand off your current task to the next agent. Use when you're stuck, done with your part, or a different agent would be better suited. The next agent that connects will see this handoff and can pick it up instantly without re-analyzing the project.",
     schema: z.object({
-      summary: z.string().describe("What you were working on and what's been done so far"),
-      stuck_reason: z.string().optional().describe("Why you're handing off -- what blocked you, what you tried"),
-      next_steps: z.string().describe("Exactly what the next agent should do. Be specific."),
-      to_agent: z.string().optional().describe("Preferred next agent (e.g., 'codex', 'cursor', 'claude-code'). Leave empty for any agent."),
-      context_keys: z.array(z.string()).optional().describe("Keys of memories relevant to this handoff (the next agent should recall these)"),
+      summary: z.string().max(5000).describe("What you were working on and what's been done so far"),
+      stuck_reason: z.string().max(2000).optional().describe("Why you're handing off -- what blocked you, what you tried"),
+      next_steps: z.string().max(5000).describe("Exactly what the next agent should do. Be specific."),
+      to_agent: z.string().max(200).optional().describe("Preferred next agent (e.g., 'codex', 'cursor', 'claude-code'). Leave empty for any agent."),
+      context_keys: z.array(z.string().max(255)).max(20).optional().describe("Keys of memories relevant to this handoff (the next agent should recall these)"),
     }),
     widget: {
       name: "memory-dashboard",
@@ -721,6 +730,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
 
       const handoff = createHandoff(db, {
         from_agent: agentId,
@@ -800,6 +810,7 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
+      checkRateLimit(agentId);
 
       let handoff: any;
       if (params.handoff_id) {
@@ -903,12 +914,16 @@ server.tool(
   async (params, ctx) => {
     try {
       const agentId = getAgentId(ctx);
-      const handoff = completeHandoff(db, params.handoff_id);
+      checkRateLimit(agentId);
+      const handoff = completeHandoff(db, params.handoff_id, agentId);
 
       if (!handoff) {
-        // Check if handoff exists with wrong status
-        const existing = db.prepare(`SELECT status FROM handoffs WHERE id = ?`).get(params.handoff_id) as { status: string } | undefined;
+        // Check if handoff exists with wrong status or different agent
+        const existing = db.prepare(`SELECT status, picked_up_by FROM handoffs WHERE id = ?`).get(params.handoff_id) as { status: string; picked_up_by: string | null } | undefined;
         if (existing) {
+          if (existing.status === "in_progress" && existing.picked_up_by !== agentId) {
+            return error(`Handoff #${params.handoff_id} was picked up by ${agentDisplayName(existing.picked_up_by || "unknown")}. Only that agent can complete it.`);
+          }
           return error(`Handoff #${params.handoff_id} cannot be completed (current status: ${existing.status}). It must be picked up first.`);
         }
         return error(`Handoff #${params.handoff_id} not found.`);
@@ -1158,7 +1173,7 @@ server.resource(
       lines.push("These are waiting for an agent to pick up. Use `pickup` tool to accept one.");
       lines.push("");
       for (const h of pending) {
-        const contextKeys = h.context_keys ? JSON.parse(h.context_keys) : [];
+        const contextKeys = safeParseJsonArray(h.context_keys);
         lines.push(`### Handoff #${h.id} from ${agentDisplayName(h.from_agent)}`);
         lines.push(`Created: ${h.created_at}`);
         if (h.to_agent) lines.push(`Preferred agent: ${agentDisplayName(h.to_agent)}`);
@@ -1340,6 +1355,25 @@ server.app.get("/api/health", (c) => {
 });
 
 // ========================
+// ========================
+// GRACEFUL SHUTDOWN
+// ========================
+
+function gracefulShutdown(signal: string) {
+  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+  try {
+    db.close();
+    console.log("Database connection closed.");
+  } catch (err: any) {
+    console.error(`Error closing database: ${err.message}`);
+  }
+  process.exit(0);
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+
 // START
 // ========================
 
